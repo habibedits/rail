@@ -440,3 +440,5 @@ input:focus { border-color: var(--focus); }
 .cal-desc.folded .txt { max-height: 5.8em; overflow: hidden; -webkit-mask-image: linear-gradient(#000 60%, transparent); }
 .cal-desc a { color: var(--fg); text-underline-offset: 2px; }
 .cal-desc .linkbtn { margin-top: 2px; }
+
+.cal-edit { padding: 6px 0 4px; border-bottom: 0; }

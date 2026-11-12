@@ -141,6 +141,7 @@ export type CalReq =
   | { op: 'toggle'; key: string }
   | { op: 'open'; url: string }
   | { op: 'move'; id: string; title: string; start: number; end: number }
+  | { op: 'edit'; id: string; title: string; start: number; end: number }
   | { op: 'add'; calendar: string; title: string; start: number; end: number }
   | { op: 'notes'; id: string; transcribe?: boolean; join?: boolean }
   | { op: 'rsvp'; id: string; title: string; response: 'accepted' | 'declined' | 'tentative' };

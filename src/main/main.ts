@@ -810,6 +810,7 @@ type CalReq =
   | { op: 'toggle'; key: string }
   | { op: 'open'; url: string }
   | { op: 'move'; id: string; title: string; start: number; end: number }
+  | { op: 'edit'; id: string; title: string; start: number; end: number }
   | { op: 'add'; calendar: string; title: string; start: number; end: number }
   | { op: 'notes'; id: string; transcribe?: boolean; join?: boolean }
   | { op: 'rsvp'; id: string; title: string; response: 'accepted' | 'declined' | 'tentative' };
@@ -902,6 +903,19 @@ async function handleCal(req: CalReq): Promise<unknown> {
       } finally {
         await refreshCalendar();
       }
+      return calSnapshot();
+    }
+    case 'edit': {
+      const e = calEvents.find((x) => x.id === req.id);
+      if (!e) throw new Error('That event isn’t on today’s calendar any more.');
+      const title = String(req.title ?? '').trim();
+      const start = Number(req.start), end = Number(req.end);
+      if (!isFinite(start) || !isFinite(end) || end <= start) throw new Error('The end has to be after the start.');
+      const change: { title?: string; start?: number; end?: number } = {};
+      if (title && title !== e.title) change.title = title;
+      if (start !== e.start || end !== e.end) { change.start = start; change.end = end; }
+      await ncal.editEvent(e.id, e.title, change);
+      await refreshCalendar();
       return calSnapshot();
     }
     case 'add':

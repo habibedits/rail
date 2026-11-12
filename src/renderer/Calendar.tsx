@@ -77,6 +77,9 @@ function Today({ snap, busy, error, run }: { snap: CalSnapshot; busy: string; er
   const visible = rail ? rail.spaces[rail.active]?.id === 'calendar' : true;
   const [now, setNow] = useState(Date.now());
   const [selected, setSelected] = useState<string | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [note, setNote] = useState('');
+  useEffect(() => { if (!note) return; const t = setTimeout(() => setNote(''), 5000); return () => clearTimeout(t); }, [note]);
   const [picker, setPicker] = useState(false);
   const [adding, setAdding] = useState<number | null>(null); // start time of the new event
   const [drag, setDrag] = useState<{ id: string; dy: number } | null>(null);
@@ -173,6 +176,7 @@ function Today({ snap, busy, error, run }: { snap: CalSnapshot; busy: string; er
       {adding !== null && <AddForm snap={snap} start={adding} run={run} onClose={() => setAdding(null)} />}
 
       {error && <p className="error pad">{error}</p>}
+      {note && <div className="cal-warn">{note}</div>}
       {snap.error && (
         <div className="cal-warn">
           {snap.error.message}{' '}
@@ -187,6 +191,9 @@ function Today({ snap, busy, error, run }: { snap: CalSnapshot; busy: string; er
               : focus.start > now ? `Up next · ${until(focus.start, now)}`
                 : 'Earlier today'}
           </div>
+          {editing === focus.id ? (
+            <EditForm e={focus} run={run} onClose={() => setEditing(null)} onMoved={(msg) => { setEditing(null); setNote(msg); }} />
+          ) : (<>
           <div className="cal-title">{focus.title}</div>
           <div className="cal-meta">
             {fmtTime(focus.start)} – {fmtTime(focus.end)}
@@ -224,9 +231,11 @@ function Today({ snap, busy, error, run }: { snap: CalSnapshot; busy: string; er
             <button className="btn small" disabled={busy === 'notes'} title="Open this event's Notion meeting note (makes one if there isn't one yet)" onClick={() => run('notes', { op: 'notes', id: focus.id })}>
               {busy === 'notes' ? 'Opening…' : 'Notes'}
             </button>
+            {focus.canMove && <button className="btn small" title="Change the name, date or time" onClick={() => setEditing(focus.id)}>Edit</button>}
             {focus.webUrl && <button className="btn small ghost" onClick={() => void cal({ op: 'open', url: focus.webUrl! })}>Notion Cal ↗</button>}
             {selected && <button className="btn small ghost" onClick={() => setSelected(null)}>Close</button>}
           </div>
+          </>)}
         </div>
       ) : (
         <div className="cal-focus"><div className="cal-when">{timed.length ? 'No more meetings today' : 'Nothing on the calendar today'}</div></div>
@@ -413,5 +422,55 @@ function Description({ text }: { text: string }) {
       </div>
       {long && <button className="linkbtn muted" onClick={() => setOpen(!open)}>{open ? 'Show less' : 'Show more'}</button>}
     </div>
+  );
+}
+
+const toDate = (ms: number) => { const d = new Date(ms); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+const at = (date: string, time: string) => { const [y, mo, d] = date.split('-').map(Number); const [h, mi] = time.split(':').map(Number); return new Date(y, mo - 1, d, h, mi).getTime(); };
+
+// Edit an event's name, date and time from its card.
+function EditForm({ e, run, onClose, onMoved }: { e: CalEvent; run: Run; onClose: () => void; onMoved: (msg: string) => void }) {
+  const [title, setTitle] = useState(e.title);
+  const [date, setDate] = useState(toDate(e.start));
+  const [from, setFrom] = useState(toInput(e.start));
+  const [to, setTo] = useState(toInput(e.end));
+  const [saving, setSaving] = useState(false);
+
+  const start = date && from ? at(date, from) : NaN;
+  let end = date && to ? at(date, to) : NaN;
+  if (isFinite(start) && isFinite(end) && end <= start) end += 86400000; // ends after midnight
+  const changed = title.trim() !== e.title || start !== e.start || end !== e.end;
+  const valid = !!title.trim() && isFinite(start) && isFinite(end);
+
+  const save = async () => {
+    if (!valid || !changed) { onClose(); return; }
+    const guests = e.people > 1 && (start !== e.start || end !== e.end) ? '\n\nGuests will be notified.' : '';
+    if (guests && !window.confirm(`Move “${e.title}” to ${new Date(start).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}, ${fmtTime(start)} – ${fmtTime(end)}?${guests}`)) return;
+    setSaving(true);
+    await run('edit', { op: 'edit', id: e.id, title: title.trim(), start, end });
+    setSaving(false);
+    const otherDay = toDate(start) !== toDate(Date.now());
+    if (otherDay) onMoved(`Moved “${title.trim()}” to ${new Date(start).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}`);
+    else onClose();
+  };
+
+  return (
+    <form className="cal-add cal-edit" onSubmit={(ev) => { ev.preventDefault(); void save(); }} onKeyDown={(ev) => ev.key === 'Escape' && onClose()}>
+      <input autoFocus value={title} onChange={(ev) => setTitle(ev.target.value)} placeholder="Event name" />
+      <input type="date" value={date} onChange={(ev) => setDate(ev.target.value)} />
+      <div className="r">
+        <input type="time" value={from} onChange={(ev) => {
+          // Keep the length the same when the start changes.
+          const len = isFinite(start) && isFinite(end) ? end - start : e.end - e.start;
+          setFrom(ev.target.value);
+          if (date && ev.target.value) setTo(toInput(at(date, ev.target.value) + len));
+        }} />
+        <input type="time" value={to} onChange={(ev) => setTo(ev.target.value)} />
+      </div>
+      <div className="r end">
+        <button type="button" className="btn small ghost" onClick={onClose}>Cancel</button>
+        <button type="submit" className="btn small primary" disabled={saving || !valid}>{saving ? 'Saving…' : 'Save'}</button>
+      </div>
+    </form>
   );
 }

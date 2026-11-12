@@ -347,6 +347,18 @@ export async function moveEvent(id: string, title: string, start: number, end: n
   });
 }
 
+// Edit from the event card: a new title and/or a new date and time.
+export async function editEvent(id: string, oldTitle: string, change: { title?: string; start?: number; end?: number }) {
+  const update: Record<string, unknown> = {};
+  if (change.title) update.summary = change.title;
+  if (change.start !== undefined && change.end !== undefined) update.period = period(change.start, change.end);
+  if (!Object.keys(update).length) return;
+  await callTool('notion-calendar-update-events', {
+    timeZone: zone(),
+    updates: [{ updateType: 'UPDATE', event: { ...split(id), eventSummary: oldTitle }, update }],
+  });
+}
+
 export async function rsvp(id: string, title: string, responseStatus: 'accepted' | 'declined' | 'tentative') {
   await callTool('notion-calendar-update-events', {
     timeZone: zone(),
