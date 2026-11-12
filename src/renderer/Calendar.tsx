@@ -193,6 +193,8 @@ function Today({ snap, busy, error, run }: { snap: CalSnapshot; busy: string; er
             {focus.people > 1 ? ` · ${focus.people} people` : ''}
             {focus.response === 'needsAction' ? ' · not answered' : focus.response === 'tentative' ? ' · maybe' : ''}
           </div>
+          {focus.location && <div className="cal-loc" title={focus.location}>{focus.location}</div>}
+          {focus.description && <Description key={focus.id} text={focus.description} />}
           {focus.canRsvp && (
             <div className="rsvp">
               <span>Going?</span>
@@ -397,3 +399,19 @@ function layoutColumns(events: CalEvent[]) {
   return out;
 }
 
+
+// An event's description: plain text with clickable links (they open in your
+// browser). Long ones start folded so the day grid stays in view.
+function Description({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  const long = text.length > 220 || text.split('\n').length > 4;
+  const parts = text.split(/(https?:\/\/[^\s<>()"]+)/g);
+  return (
+    <div className={`cal-desc ${long && !open ? 'folded' : ''}`}>
+      <div className="txt">
+        {parts.map((p, i) => (i % 2 ? <a key={i} href={p} target="_blank" rel="noreferrer">{p.replace(/^https?:\/\/(www\.)?/, '').slice(0, 48)}{p.length > 56 ? '…' : ''}</a> : p))}
+      </div>
+      {long && <button className="linkbtn muted" onClick={() => setOpen(!open)}>{open ? 'Show less' : 'Show more'}</button>}
+    </div>
+  );
+}

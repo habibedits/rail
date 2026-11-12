@@ -235,9 +235,31 @@ export interface CalEvent {
   canMove: boolean; // the user can change its time
   recurring: boolean;
   canRsvp: boolean; // an invite from someone else
+  description: string; // plain text (Google sends HTML for some events)
+  location: string; // empty when it's just the meeting link
 }
 
 const MEETING_LINK = /https:\/\/[^\s"<>]*(zoom\.us\/(j|my|w)\/|meet\.google\.com\/|teams\.microsoft\.com\/l\/meetup-join|whereby\.com\/|around\.co\/)[^\s"<>)]*/i;
+
+// Google event descriptions are often HTML. Rail shows them as plain text
+// (links kept as URLs), never as HTML.
+function htmlToText(s: string): string {
+  if (!s) return '';
+  if (!/<[a-z][\s\S]*>/i.test(s)) return s.trim();
+  return s
+    .replace(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi, (_m, href: string, text: string) => {
+      const t = text.replace(/<[^>]+>/g, '').trim();
+      return !t || t === href || href.includes(t) ? href : `${t} (${href})`;
+    })
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<li[^>]*>/gi, '\n• ')
+    .replace(/<\/(p|div|li|ul|ol|h\d|tr)>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
 
 const localDay = (d: string) => { const [y, m, dd] = d.slice(0, 10).split('-').map(Number); return new Date(y, m - 1, dd).getTime(); };
 function when(p: any): number {
@@ -292,6 +314,8 @@ export async function todayEvents(): Promise<{ events: CalEvent[]; calendars: Ca
           canMove: !allDay && !c.isReadOnly && (e.organizer ? !!e.organizer.isSelf : true),
           recurring: !!e.isRecurring,
           canRsvp: !!self && !(e.organizer?.isSelf ?? self?.isOrganizer),
+          description: htmlToText(String(e.description ?? '')).slice(0, 8000),
+          location: (() => { const l = String(e.location ?? '').trim(); return MEETING_LINK.test(l) && MEETING_LINK.exec(l)?.[0] === l ? '' : l; })(),
         });
       }
     }

@@ -111,6 +111,8 @@ export interface CalEvent {
   canMove: boolean;
   recurring: boolean;
   canRsvp: boolean;
+  description: string;
+  location: string;
 }
 
 export interface CalInfo {

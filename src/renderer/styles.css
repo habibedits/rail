@@ -433,3 +433,10 @@ input:focus { border-color: var(--focus); }
 .focus > * { flex-shrink: 0; }
 .divider.header { border-top: 0; cursor: default; padding-left: 4px; }
 
+
+.cal-loc { font-size: 12px; color: var(--muted); margin: -4px 0 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; user-select: text; }
+.cal-desc { margin: -2px 0 10px; font-size: 12px; line-height: 1.45; }
+.cal-desc .txt { white-space: pre-wrap; word-break: break-word; user-select: text; cursor: text; max-height: 40vh; overflow-y: auto; }
+.cal-desc.folded .txt { max-height: 5.8em; overflow: hidden; -webkit-mask-image: linear-gradient(#000 60%, transparent); }
+.cal-desc a { color: var(--fg); text-underline-offset: 2px; }
+.cal-desc .linkbtn { margin-top: 2px; }
