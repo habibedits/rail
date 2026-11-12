@@ -22,4 +22,6 @@ export const Hide = () => (<svg {...base}><path d="M6 3.5 10.5 8 6 12.5" /><path
 export const ChevronUp = () => (<svg {...base}><path d="M4 10l4-4 4 4" /></svg>);
 export const ChevronDown = () => (<svg {...base}><path d="M4 6l4 4 4-4" /></svg>);
 export const Forward = () => (<svg {...base}><path d="M6 3.5 10.5 8 6 12.5" /></svg>);
+export const Up = () => (<svg {...base}><path d="M8 13V3.5M4 7.5l4-4 4 4" /></svg>);
+export const Down = () => (<svg {...base}><path d="M8 3v9.5M4 8.5l4 4 4-4" /></svg>);
 export const Caret = () => (<svg {...base} width={10} height={10}><path d="M4 6l4 4 4-4" /></svg>);

@@ -14,6 +14,8 @@ export type Cmd =
   | { type: 'hide' }
   | { type: 'pane'; pane: 'claude' | 'notion'; action: 'back' | 'forward' | 'reload' | 'home' | 'new' | 'external' | 'app' }
   | { type: 'notion-trail' }
+  | { type: 'notion-up' }
+  | { type: 'notion-down' }
   | { type: 'collapse'; pane: 'claude' | 'notion' }
   | { type: 'divider'; phase: 'start' | 'move' | 'reset'; dy?: number };
 

@@ -1,6 +1,6 @@
 # Rail
 
-A docked macOS side panel: claude.ai + Notion (Space 1, "Work") and Fireflies (Space 2, "Meetings").
+A docked macOS side panel with spaces for Claude, Notion, Meetings (Fireflies), Slack, Calendar and Focus.
 Built from the PRD "Side Panel App PRD — Claude + Notion + Fireflies".
 
 **Status:** M1–M4, M7 and M8 done: docked shell, spaces (Claude ⌃1, Notion ⌃2, Meetings ⌃3, Slack ⌃4, Calendar ⌃5, Focus ⌃6; Focus always last) + swipe, Fireflies Meetings panel, Slack, Calendar, Focus. Claude and Notion were one split "Work" space until 2026-11-12. Open: M5 Send to Notion, Send to Slack, M6 polish.
@@ -48,10 +48,8 @@ To pick up later changes on that Mac: `git pull && npm install && npm run instal
 | --- | --- |
 | Show / hide Rail | `Ctrl+`` ` (global), or the hide button in the top strip |
 | Switch space | Two-finger horizontal swipe, `Ctrl+Option+←/→`, `Ctrl+1` / `Ctrl+2` / `Ctrl+3`, or click a dot |
-| Resize Claude/Notion split | Drag the Notion header bar; double-click it to reset to 60/40 |
-| Give one pane full height | The ⌃ / ⌄ buttons at the right of the Notion header |
 | Claude actions | Back, reload, new chat, open in browser (top strip) |
-| Notion navigation | Back / forward, and click the page title for your 15 most recent pages (Notion header) |
+| Notion navigation | Back / forward; ↑ goes up to the page this one is in; ↓ lists the pages, meeting notes and databases inside this page; click the page title for your 15 most recent pages (Notion header) |
 | Notion actions | Reload, open in browser; Notion home and "open in Notion app" are in the page-title menu |
 | Stay on top | Pin button in the top strip |
 | Calendar | Space 4: today from every account connected in Notion Calendar (via Notion's MCP server), in your Mac's time zone. Day grid with a color per calendar; a dropdown ("6 of 35 ▾") picks which calendars show, grouped by account. Drag an event to move it, + or double-click a slot to add one, Notes opens (or makes) the event's Notion meeting note in the Notion pane; Transcribe / Join & transcribe also starts Notion's browser transcription there (your mic only). RSVP, Edit (name, date and time), the event's description (links open in your browser) and location Yes/No/Maybe on invites. New events default to the work account's calendar. Nudge 5 min before each meeting (and at start if it has a video link); the dot shows a countdown (`12m`, `now`). Connect once: approve Rail in Notion in your browser |

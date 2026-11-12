@@ -510,6 +510,65 @@ function showNotionTrail() {
   Menu.buildFromTemplate(items).popup({ window: win, x: 44, y: STRIP_H + d.y + DIVIDER_H });
 }
 
+// Up / down through Notion's page tree (the Notion header's ↑ and ↓).
+// Up = the page this one sits in (the last link in Notion's own breadcrumb).
+// Down = pages, meeting notes and linked pages inside this page.
+const NOTION_PARENT = `(() => {
+  const here = location.pathname.match(/[0-9a-f]{32}/)?.[0];
+  const links = [...document.querySelectorAll('.notion-topbar a[href], header a[href]')]
+    .filter((a) => { const id = (a.getAttribute('href') || '').match(/[0-9a-f]{32}/)?.[0]; return id && id !== here; });
+  const a = links.pop();
+  return a ? { url: a.href, title: a.textContent.trim() || 'Parent page' } : null;
+})()`;
+const NOTION_CHILDREN = `(() => {
+  const here = location.pathname.match(/[0-9a-f]{32}/)?.[0];
+  const frame = document.querySelector('.notion-frame');
+  if (!frame) return [];
+  const out = [], seen = new Set([here]);
+  const add = (id, title, kind) => {
+    if (!id || seen.has(id)) return;
+    seen.add(id);
+    out.push({ url: location.origin + '/p/' + id, title: (title || '').replace(/\\s+/g, ' ').trim().slice(0, 70) || 'Untitled', kind });
+  };
+  for (const b of frame.querySelectorAll('[class*="notion-meeting_note"][data-block-id]')) {
+    const t = b.querySelector('h1, h2, h3, [placeholder]')?.textContent || b.textContent;
+    add(b.getAttribute('data-block-id').replace(/-/g, ''), t, 'Meeting note');
+  }
+  for (const b of frame.querySelectorAll('.notion-page-content [class*="notion-collection_view"][data-block-id]')) {
+    const t = b.querySelector('[contenteditable], [placeholder]')?.textContent || b.textContent.slice(0, 60);
+    add(b.getAttribute('data-block-id').replace(/-/g, ''), t, 'Database');
+  }
+  for (const a of frame.querySelectorAll('.notion-page-content a[href], .notion-page-block a[href], .notion-alias-block a[href]')) {
+    const href = a.getAttribute('href') || '';
+    if (!/^\\/|^https:\\/\\/([a-z]+\\.)?notion\\.(so|com)\\//.test(href)) continue; // Notion pages only, not outside links
+    const id = href.match(/[0-9a-f]{32}/)?.[0];
+    const block = a.closest('[data-block-id]');
+    const kind = block?.className.includes('notion-page-block') ? 'Page' : block?.className.includes('alias') ? 'Link' : 'Mention';
+    add(id, a.textContent, kind);
+  }
+  return out.slice(0, 30);
+})()`;
+
+async function notionUp() {
+  const wc = notion?.webContents;
+  if (!wc || wc.isDestroyed()) return;
+  const p = await wc.executeJavaScript(NOTION_PARENT).catch(() => null) as { url: string } | null;
+  if (p && /^https:\/\/([a-z]+\.)?notion\.(so|com)\//.test(p.url)) wc.loadURL(p.url);
+  else shell.beep();
+}
+
+async function notionDown() {
+  const wc = notion?.webContents;
+  if (!wc || wc.isDestroyed()) return;
+  const kids = (await wc.executeJavaScript(NOTION_CHILDREN).catch(() => [])) as { url: string; title: string; kind: string }[];
+  const ok = kids.filter((k) => /^https:\/\/([a-z]+\.)?notion\.(so|com)\//.test(k.url));
+  const items: Electron.MenuItemConstructorOptions[] = ok.length
+    ? ok.map((k) => ({ label: k.kind === 'Meeting note' ? `\u{1F4DD}  ${k.title}` : k.title, sublabel: k.kind, click: () => wc.loadURL(k.url) }))
+    : [{ label: 'No pages inside this one', enabled: false }];
+  const d = divider.getBounds();
+  Menu.buildFromTemplate(items).popup({ window: win, x: 60, y: STRIP_H + d.y + DIVIDER_H });
+}
+
 function broadcast() {
   const s = state();
   for (const v of [strip, divider, meetings]) {
@@ -524,6 +583,8 @@ type Cmd =
   | { type: 'hide' }
   | { type: 'pane'; pane: 'claude' | 'notion'; action: 'back' | 'forward' | 'reload' | 'home' | 'new' | 'external' | 'app' }
   | { type: 'notion-trail' }
+  | { type: 'notion-up' }
+  | { type: 'notion-down' }
   | { type: 'collapse'; pane: 'claude' | 'notion' }
   | { type: 'divider'; phase: 'start' | 'move' | 'reset'; dy?: number };
 
@@ -548,6 +609,12 @@ function handleCmd(cmd: Cmd) {
       break;
     case 'notion-trail':
       showNotionTrail();
+      break;
+    case 'notion-up':
+      void notionUp();
+      break;
+    case 'notion-down':
+      void notionDown();
       break;
     case 'divider':
       dividerCmd(cmd.phase, cmd.dy ?? 0);
