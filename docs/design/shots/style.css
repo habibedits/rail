@@ -1,0 +1,56 @@
+/* Notion-style art direction for the README images: warm white paper,
+   charcoal type, Notion's soft block colors, emoji as icons, thin rules. */
+:root {
+  --ink: #37352f; --muted: #787774; --faint: #9b9a97; --rule: rgba(55, 53, 47, 0.1);
+  --paper: #ffffff; --sand: #f7f6f3;
+  --gray-bg: #f1f1ef; --brown-bg: #f4eeee; --orange-bg: #fbecdd; --yellow-bg: #fbf3db; --green-bg: #edf3ec;
+  --blue-bg: #e7f3f8; --purple-bg: #f6f3f9; --pink-bg: #faf1f5; --red-bg: #fdebec;
+  --blue: #337ea9; --green: #448361; --orange: #d9730d; --red: #d44c47; --purple: #9065b0; --brown: #9f6b53;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--paper); color: var(--ink); overflow: hidden;
+  font: 16px/1.5 -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.canvas { position: relative; width: 100%; height: 100%; padding: 64px 72px; }
+.dots-bg { background-image: radial-gradient(rgba(55,53,47,.13) 1px, transparent 1px); background-size: 22px 22px; }
+
+.eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
+.eyebrow b { font-weight: 600; color: var(--ink); }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; background: var(--gray-bg); font-size: 13px; color: var(--muted); }
+h1.title { font-size: 76px; line-height: 1; letter-spacing: -0.035em; font-weight: 750; margin: 18px 0 18px; }
+h2.title { font-size: 44px; line-height: 1.08; letter-spacing: -0.025em; font-weight: 720; margin: 12px 0 12px; }
+.lede { font-size: 21px; line-height: 1.45; color: var(--muted); max-width: 520px; margin: 0; }
+.lede b { color: var(--ink); font-weight: 600; }
+
+/* A Rail panel: the real UI in an iframe, framed like the docked window. */
+.rail {
+  width: 384px; height: 860px; border-radius: 12px; overflow: hidden; background: #f5f5f4;
+  border: 1px solid rgba(0,0,0,.12);
+  box-shadow: 0 1px 2px rgba(15,15,15,.06), 0 18px 40px -8px rgba(15,15,15,.18), 0 40px 90px -20px rgba(15,15,15,.18);
+}
+.rail iframe { width: 384px; height: 860px; border: 0; display: block; }
+.scale { transform-origin: top left; }
+
+/* Notion-like blocks */
+.callout { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 6px; font-size: 16px; line-height: 1.45; }
+.callout .ic { font-size: 20px; line-height: 1.2; }
+.callout b { font-weight: 600; }
+.bg-gray { background: var(--gray-bg); } .bg-yellow { background: var(--yellow-bg); } .bg-blue { background: var(--blue-bg); }
+.bg-green { background: var(--green-bg); } .bg-orange { background: var(--orange-bg); } .bg-purple { background: var(--purple-bg); }
+.bg-red { background: var(--red-bg); } .bg-pink { background: var(--pink-bg); } .bg-brown { background: var(--brown-bg); }
+.list { display: flex; flex-direction: column; gap: 10px; margin-top: 26px; }
+.kbd { display: inline-block; min-width: 26px; padding: 1px 6px; border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 5px; font: 600 12.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); background: #fff; text-align: center; }
+.tag { display: inline-block; padding: 0 7px; border-radius: 4px; font-size: 13px; line-height: 1.6; }
+.t-blue { background: var(--blue-bg); color: var(--blue); } .t-green { background: var(--green-bg); color: var(--green); }
+.t-orange { background: var(--orange-bg); color: var(--orange); } .t-purple { background: var(--purple-bg); color: var(--purple); }
+.t-red { background: var(--red-bg); color: var(--red); } .t-brown { background: var(--brown-bg); color: var(--brown); } .t-gray { background: var(--gray-bg); color: var(--muted); }
+
+/* Hand-annotation: a small label with a thin connector, like a comment in the margin. */
+.note { position: absolute; display: flex; align-items: center; gap: 10px; font-size: 15px; color: var(--ink); white-space: nowrap; }
+.note .bub { background: #fff; border: 1px solid var(--rule); border-radius: 8px; padding: 7px 11px; box-shadow: 0 4px 14px rgba(15,15,15,.07); }
+.note .line { height: 1px; background: var(--ink); opacity: .35; }
+.note .pin { width: 8px; height: 8px; border-radius: 50%; background: var(--ink); opacity: .55; flex: none; }
+.foot { position: absolute; left: 72px; bottom: 34px; font-size: 13px; color: var(--faint); }

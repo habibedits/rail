@@ -1,0 +1,10 @@
+.canvas { display: grid; grid-template-columns: 520px 1fr; gap: 56px; align-items: center; padding: 0 64px 0 80px; }
+.stage { position: relative; height: 1000px; display: flex; gap: 32px; align-items: center; justify-content: center; }
+.stage.sand { background: var(--sand); margin-right: -64px; padding-right: 64px; border-left: 1px solid var(--rule); }
+.stage .rail { transform: scale(.98); }
+.stage .label { position: absolute; top: 40px; font-size: 13px; color: var(--faint); }
+.mac-menu { position: absolute; z-index: 5; min-width: 270px; padding: 5px; border-radius: 9px; background: rgba(246,246,246,.96);
+  border: 1px solid rgba(0,0,0,.12); box-shadow: 0 12px 34px rgba(0,0,0,.22); font: 13.5px/1.2 -apple-system, sans-serif; color: #1d1d1f; }
+.mac-menu div { padding: 5px 10px; border-radius: 5px; display: flex; flex-direction: column; }
+.mac-menu div small { color: #86868b; font-size: 11px; margin-top: 2px; }
+.mac-menu div.hi { background: #3b82f6; color: #fff; } .mac-menu div.hi small { color: rgba(255,255,255,.8); }

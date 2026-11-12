@@ -1,79 +1,151 @@
+<img src="docs/images/hero.png" alt="Rail: a docked macOS side panel for Claude, Notion, Meetings, Slack, Calendar and Focus" width="100%">
+
 # Rail
 
-A docked macOS side panel with spaces for Claude, Notion, Meetings (Fireflies), Slack, Calendar and Focus.
-Built from the PRD "Side Panel App PRD — Claude + Notion + Fireflies".
+**Rail is a side panel that lives on the right edge of your Mac.** It keeps the tools you check all day (Claude, Notion, your meeting recaps, Slack, today's calendar and a focus timer) one keystroke away, without another browser tab or another app window.
 
-**Status:** M1–M4, M7 and M8 done: docked shell, spaces (Claude ⌃1, Notion ⌃2, Meetings ⌃3, Slack ⌃4, Calendar ⌃5, Focus ⌃6; Focus always last) + swipe, Fireflies Meetings panel, Slack, Calendar, Focus. Claude and Notion were one split "Work" space until 2026-11-12. Open: M5 Send to Notion, Send to Slack, M6 polish.
+Press `⌃` `` ` `` anywhere to slide it in or out. Swipe with two fingers on the panel, or press `⌃1` to `⌃6`, to move between spaces.
 
-## Run
+> All names, companies and meetings in these images are made up.
+
+---
+
+## Six spaces, one panel
+
+<img src="docs/images/spaces.png" alt="The six spaces: Claude, Notion, Meetings, Slack, Calendar and Focus" width="100%">
+
+| | Space | Key | What it's for |
+| --- | --- | --- | --- |
+| ✳️ | **Claude** | `⌃1` | claude.ai, signed in, always open. |
+| 📓 | **Notion** | `⌃2` | Your real Notion, re-fit for a narrow pane. |
+| 🎙️ | **Meetings** | `⌃3` | Fireflies recaps, action items, transcripts and live calls. |
+| 💬 | **Slack** | `⌃4` | Slack, completely silent. Unreads show as a count on its dot. |
+| 📅 | **Calendar** | `⌃5` | Today from every Notion Calendar account, in one view. |
+| 🍅 | **Focus** | `⌃6` | A Pomodoro timer, a streak grid, Sudoku and chess puzzles. |
+
+---
+
+## 📅 Calendar
+
+<img src="docs/images/calendar.png" alt="The Calendar space with an event open and the Edit form" width="100%">
+
+- **Every account in one day.** Work and personal calendars from Notion Calendar show side by side, a color per calendar. The `3 of 4 ▾` menu picks which ones show.
+- **Move things fast.** Drag an event to move it (it snaps to 15 minutes). Double-click an empty slot, or press **+**, to add one.
+- **Edit** an event's name, date and time on its card. If other people are invited, Rail asks first, because they'll get an update.
+- **Click an event** to read its description and location, RSVP, open its Notion meeting note, or **Join & transcribe** the call.
+- **A nudge** 5 minutes before each meeting. The Calendar dot counts down (`12m`, `now`).
+
+## 🎙️ Meetings
+
+<img src="docs/images/meetings.png" alt="The Meetings space showing a live call and a meeting recap" width="100%">
+
+- Your **Fireflies** recordings, newest first, with search.
+- Open one for the **overview, action items grouped by person, keywords and the full transcript**. Timestamps jump to that moment in the recording.
+- **Live now:** while Fireflies is in a call, follow the transcript as it happens.
+- **Send to Claude** drops the whole transcript into a new Claude chat, so you can ask for a follow-up email or a summary.
+
+## 📓 Notion
+
+<img src="docs/images/notion.png" alt="The Notion space with the menu of pages inside the current page" width="100%">
+
+- The real Notion site, with margins, pop-ups and blocks re-fit so nothing gets cut off at 384 px wide.
+- **Back / forward**, **↑ up** to the page this one lives in, and **↓ down** into any sub-page, meeting note or database on the page.
+- Click the page title for your **15 most recent pages**, Notion home, or "open in the Notion app".
+- `notion://` links from Calendar, Slack or Claude open right here instead of in a browser.
+
+## 🍅 Focus
+
+<img src="docs/images/focus.png" alt="The Focus space with the timer, streak grid, Sudoku and chess" width="100%">
+
+- A **Pomodoro timer** (25 / 5 / 15 by default, a long break every 4). It keeps running while you're in other spaces and lets you know when a session ends.
+- A **streak grid** of every finished session over the last 21 weeks, plus today, this week and all-time counts.
+- For the breaks: **Sudoku** (generated on your Mac, with pencil marks) and **chess puzzles** from Lichess's free puzzle library.
+
+## 💬 Slack and ✳️ Claude
+
+Both are the real sites, signed in once and kept open. Slack in Rail is **silent**: no notifications and no alert sounds (huddles and clips you click still play). The unread count shows only on the Slack dot.
+
+---
+
+## Install
+
+You need an **Apple Silicon Mac**, [Node.js](https://nodejs.org) 20 or later, and Git.
+
+```bash
+git clone https://github.com/habibedits/rail.git
+cd rail
+npm install
+npm run install-app
+```
+
+That builds `Rail.app`, copies it into `/Applications` and opens it. It opens at login by default; untick **Rail menu → Open at Login** to stop that.
+
+Rail isn't code-signed. If macOS blocks it the first time, right-click Rail in Applications and choose **Open**.
+
+**Updating:** `git pull && npm install && npm run install-app`.
+
+## Set up (first run)
+
+1. **Claude, Notion and Slack:** sign in inside each space. Google blocks its sign-in button inside embedded apps like Rail, so either:
+   - use **Rail menu → Import Logins from Arc…**, which copies just your Claude, Notion and Slack logins from Arc (macOS asks once to allow "Arc Safe Storage"; click Allow), or
+   - sign in with your email address and the code the site sends you. It's the same account as your Google sign-in.
+2. **Calendar:** open the Calendar space and click **Connect**. Approve Rail in Notion in your browser. Rail reads every account you've added to Notion Calendar.
+3. **Meetings:** open the Meetings space and paste your Fireflies API key (in Fireflies: **Integrations → Fireflies API**). It's stored encrypted in your Keychain.
+
+## Keyboard and gestures
+
+| Do this | To |
+| --- | --- |
+| `⌃` `` ` `` | Show or hide Rail, from any app |
+| `⌃1` … `⌃6` | Jump to a space (while Rail has focus) |
+| `⌃⌥←` / `⌃⌥→`, or a two-finger swipe on the panel | Previous / next space |
+| Pin button (top strip) | Keep Rail above other windows |
+| Hide button (top strip) | Slide Rail away |
+
+## Your data stays on your Mac
+
+- **Nothing personal is in this repo.** Your logins, the Fireflies key, Notion Calendar access and Focus history live only on the Mac you set up.
+- Logins live in Rail's own browser storage in `~/Library/Application Support/Rail`. The Fireflies key and Notion Calendar tokens are encrypted with the macOS Keychain.
+- Someone who clones the repo gets the code, not your accounts. They sign in to their own.
+- Rail talks only to the services you use (claude.ai, Notion, Slack, Fireflies, Lichess) and has no analytics.
+
+---
+
+## For developers
 
 ```bash
 npm install
 npm run dev
 ```
 
-`npm run dev` rebuilds the main process, starts Vite for Rail's own UI, and launches Electron.
-UI changes (`src/renderer`) hot-reload. Changes to `src/main` or `src/preload` need a restart (Ctrl+C, then `npm run dev`).
+`npm run dev` rebuilds the main process, starts Vite for Rail's own UI and launches Electron. UI changes in `src/renderer` hot-reload; changes in `src/main` or `src/preload` need a restart. `npm start` runs a production build without Vite. Quit the installed app first: the dev copy and the installed copy share one login store, so only one can run at a time.
 
-`npm start` runs a production build without Vite.
+### Layout of the code
 
-## Install as an app
+- `src/main/main.ts`: the window, docking, spaces, link handling and IPC.
+- `src/main/notionCal.ts`: Notion Calendar through Notion's MCP server.
+- `src/main/config.ts`: settings that aren't secret (`config.json` in Rail's userData).
+- `src/main/secrets.ts`: Keychain-encrypted secrets.
+- `src/preload/`: `web.ts` for the sites (swipe, Slack silencing), `shell.ts` for Rail's own UI (the `window.rail` bridge), `swipe.ts` for gesture detection.
+- `src/renderer/`: React UI for the top strip, the Notion bar, Meetings, Calendar and Focus.
+- `docs/design/`: how the images in this README are made (see below).
 
-```bash
-npm run install-app
-```
+### Remaking the README images
 
-This builds `Rail.app`, copies it to `/Applications` and opens it. Quit the dev copy first (both share one login store, so only one runs at a time).
-The installed app opens at login by default; untick **Rail menu → Open at Login** to stop that. Re-run `npm run install-app` after code changes.
-Your Claude/Notion logins and settings carry over, because the dev and installed copies use the same `~/Library/Application Support/Rail`.
-
-### On another Mac
-
-Needs an Apple Silicon Mac with [Node.js](https://nodejs.org) 20 or later and Git.
+The images use Rail's real React screens with made-up data (`docs/design/mock.ts`), framed in Notion-style pages (`docs/design/shots/`).
 
 ```bash
-git clone https://github.com/<you>/rail.git
-cd rail
-npm install
-npm run install-app
+npx vite --config docs/design/vite.config.mts
 ```
 
-Logins, the Fireflies key, Notion Calendar access and Focus history live on each Mac, not in the repo, so sign in again there (or use **Rail menu → Import Logins from Arc…**). The app isn't code-signed, so if macOS blocks it the first time, right-click Rail in Applications and choose **Open**.
+In a second terminal:
 
-To pick up later changes on that Mac: `git pull && npm install && npm run install-app`.
+```bash
+TZ=America/New_York DESIGN_WAIT=6000 npx electron docs/design/render.cjs docs/images hero=shots/hero.html@1600x900 spaces=shots/spaces.html@1990x980 calendar=shots/calendar.html@1600x1000 meetings=shots/meetings.html@1600x1000 focus=shots/focus.html@1600x1000 notion=shots/notion.html@1600x1000
+```
 
-## Using it
+Open `http://localhost:5181/panel.html?space=calendar` (or `meetings`, `focus`, `notion`, `slack`, `claude`) to see a single panel.
 
-| What | How |
-| --- | --- |
-| Show / hide Rail | `Ctrl+`` ` (global), or the hide button in the top strip |
-| Switch space | Two-finger horizontal swipe, `Ctrl+Option+←/→`, `Ctrl+1` / `Ctrl+2` / `Ctrl+3`, or click a dot |
-| Claude actions | Back, reload, new chat, open in browser (top strip) |
-| Notion navigation | Back / forward; ↑ goes up to the page this one is in; ↓ lists the pages, meeting notes and databases inside this page; click the page title for your 15 most recent pages (Notion header) |
-| Notion actions | Reload, open in browser; Notion home and "open in Notion app" are in the page-title menu |
-| Stay on top | Pin button in the top strip |
-| Calendar | Space 4: today from every account connected in Notion Calendar (via Notion's MCP server), in your Mac's time zone. Day grid with a color per calendar; a dropdown ("6 of 35 ▾") picks which calendars show, grouped by account. Drag an event to move it, + or double-click a slot to add one, Notes opens (or makes) the event's Notion meeting note in the Notion pane; Transcribe / Join & transcribe also starts Notion's browser transcription there (your mic only). RSVP, Edit (name, date and time), the event's description (links open in your browser) and location Yes/No/Maybe on invites. New events default to the work account's calendar. Nudge 5 min before each meeting (and at start if it has a video link); the dot shows a countdown (`12m`, `now`). Connect once: approve Rail in Notion in your browser |
-| Focus | Space 6 (⌃6, always last): Pomodoro timer (25/5/15 by default, long break every 4; change under Timer settings). The timer runs in the main process, so it keeps going in other spaces and notifies when a session or break ends. Finished focus sessions fill a GitHub-style grid (last 21 weeks) with today / week / streak counts; stored in Rail's userData `focus.json`. Below it: Sudoku (generated locally, easy/medium/hard, pencil marks) and chess puzzles from Lichess's public puzzle API |
-| Notion links | `notion://` links (e.g. Notion Calendar → Open meeting note) open in Rail's Notion pane. Toggle: Rail menu → Open Notion Links in Rail |
-| Slack | Space 4 (loads the first time you open it). Silent in Rail: no notifications and no alert sounds (huddle audio and clips you click still play). Unread count shows on its dot only |
+### Debugging
 
-**Signing in:** Google blocks its sign-in inside embedded browsers, so the "Continue with Google" buttons won't work in Rail. Either:
-
-- **Rail menu → Import Logins from Arc…** copies your Claude, Notion and Slack login cookies from Arc (Default and numbered profiles). macOS asks to allow access to "Arc Safe Storage" in the Keychain; click Allow. Re-run it if a login expires or you log out in Arc.
-- Or sign in with your email address and the code Claude/Notion send you. It's the same account as your Google sign-in.
-
-Settings (width %, split, pin, last Notion page) are in `~/Library/Application Support/Rail/config.json`.
-Logins live in the Electron session partitions `persist:claude` and `persist:notion`.
-
-## Layout of the code
-
-- `src/main/main.ts`: window, docking, layout, spaces, link handling, IPC
-- `src/main/config.ts`: non-secret settings
-- `src/preload/swipe.ts`: wheel-delta swipe detection (PRD §5)
-- `src/preload/web.ts`: preload for claude.ai and Notion (swipe only, exposes nothing)
-- `src/preload/shell.ts`: preload for Rail's own UI (adds the `window.rail` bridge)
-- `src/renderer/`: React UI for the top strip, the divider bar and the Meetings space
-
-## Debugging
-
-`RAIL_DEBUG_PORT=9339 npm run dev` opens a Chrome DevTools port (listed at `http://localhost:9339/json`). Leave it off normally.
+`RAIL_DEBUG_PORT=9339 npm run dev` opens a Chrome DevTools port (listed at `http://localhost:9339/json`). It exposes your signed-in sessions, so leave it off normally.

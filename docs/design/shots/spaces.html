@@ -1,0 +1,31 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="style.css">
+<style>
+  .canvas { padding: 60px 64px; }
+  .row { display: flex; gap: 26px; margin-top: 40px; }
+  .col { width: 288px; }
+  .frame { width: 288px; height: 645px; }
+  .frame .rail { transform: scale(.75); transform-origin: top left; }
+  .cap { margin-top: 18px; }
+  .cap .h { display: flex; align-items: center; gap: 8px; font-weight: 650; font-size: 18px; }
+  .cap .h .kbd { margin-left: auto; }
+  .cap p { margin: 6px 0 0; color: var(--muted); font-size: 15px; line-height: 1.45; }
+</style></head><body>
+<div class="canvas">
+  <span class="pill">Six spaces · swipe with two fingers or press ⌃1–⌃6</span>
+  <h2 class="title">One panel, everything you check all day.</h2>
+  <div class="row">
+    <div class="col"><div class="frame"><div class="rail"><iframe src="../panel.html?space=claude"></iframe></div></div>
+      <div class="cap"><div class="h">✳️ Claude <span class="kbd">⌃1</span></div><p>claude.ai with your login. Voice input works.</p></div></div>
+    <div class="col"><div class="frame"><div class="rail"><iframe src="../panel.html?space=notion"></iframe></div></div>
+      <div class="cap"><div class="h">📓 Notion <span class="kbd">⌃2</span></div><p>Fitted to a narrow pane, with back, up, down and recent pages.</p></div></div>
+    <div class="col"><div class="frame"><div class="rail"><iframe src="../panel.html?space=meetings&open=1"></iframe></div></div>
+      <div class="cap"><div class="h">🎙️ Meetings <span class="kbd">⌃3</span></div><p>Fireflies recaps, action items and live transcripts.</p></div></div>
+    <div class="col"><div class="frame"><div class="rail"><iframe src="../panel.html?space=slack"></iframe></div></div>
+      <div class="cap"><div class="h">💬 Slack <span class="kbd">⌃4</span></div><p>Quiet by design: no pings, no sounds. Just an unread count.</p></div></div>
+    <div class="col"><div class="frame"><div class="rail"><iframe src="../panel.html?space=calendar"></iframe></div></div>
+      <div class="cap"><div class="h">📅 Calendar <span class="kbd">⌃5</span></div><p>Every Notion Calendar account in one day view.</p></div></div>
+    <div class="col"><div class="frame"><div class="rail"><iframe src="../panel.html?space=focus"></iframe></div></div>
+      <div class="cap"><div class="h">🍅 Focus <span class="kbd">⌃6</span></div><p>Pomodoro timer, a streak grid, and Sudoku or chess for breaks.</p></div></div>
+  </div>
+</div>
+</body></html>

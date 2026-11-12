@@ -1,0 +1,40 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="style.css">
+<style>
+  .canvas { display: grid; grid-template-columns: 560px 1fr; gap: 40px; align-items: center; padding: 0 0 0 80px; }
+  .screen { position: relative; height: 900px; background: var(--sand); border-left: 1px solid var(--rule); overflow: hidden; }
+  .ghost { position: absolute; left: 56px; top: 92px; width: 520px; height: 640px; background: #fff; border-radius: 12px; border: 1px solid var(--rule); box-shadow: 0 10px 30px rgba(15,15,15,.06); padding: 54px 44px; }
+  .ghost .bar { height: 12px; border-radius: 6px; background: var(--gray-bg); margin-bottom: 14px; }
+  .ghost .big { height: 26px; width: 62%; background: #e9e8e4; margin-bottom: 26px; border-radius: 6px; }
+  .ghost .lights { position: absolute; top: 16px; left: 18px; display: flex; gap: 7px; }
+  .ghost .lights i { width: 11px; height: 11px; border-radius: 50%; background: #e3e2de; }
+  .dock { position: absolute; right: 26px; top: 46px; transform: scale(.94); transform-origin: top right; }
+  .spaces { display: grid; grid-template-columns: repeat(3, auto); gap: 10px 10px; margin-top: 34px; justify-content: start; }
+  .sp { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px 7px 10px; border-radius: 8px; font-size: 15px; }
+  .sp .kbd { margin-left: 4px; }
+  .edge { position: absolute; right: 8px; top: 0; bottom: 0; width: 3px; background: linear-gradient(transparent, rgba(51,126,169,.35), transparent); border-radius: 2px; }
+</style></head><body>
+<div class="canvas">
+  <div>
+    <span class="eyebrow"><span class="pill">🛤️ macOS side panel</span></span>
+    <h1 class="title">Rail</h1>
+    <p class="lede">Your workday, docked to the edge of your screen. <b>Claude, Notion, meetings, Slack, your calendar and a focus timer</b> in one slim panel that's always a swipe away.</p>
+    <div class="spaces">
+      <span class="sp bg-orange">✳️ Claude <span class="kbd">⌃1</span></span>
+      <span class="sp bg-gray">📓 Notion <span class="kbd">⌃2</span></span>
+      <span class="sp bg-purple">🎙️ Meetings <span class="kbd">⌃3</span></span>
+      <span class="sp bg-pink">💬 Slack <span class="kbd">⌃4</span></span>
+      <span class="sp bg-blue">📅 Calendar <span class="kbd">⌃5</span></span>
+      <span class="sp bg-green">🍅 Focus <span class="kbd">⌃6</span></span>
+    </div>
+    <p style="margin-top:30px;font-size:15px;color:var(--muted)">Show or hide it anywhere with <span class="kbd">⌃`</span></p>
+  </div>
+  <div class="screen dots-bg">
+    <div class="ghost"><div class="lights"><i></i><i></i><i></i></div>
+      <div class="big"></div><div class="bar" style="width:92%"></div><div class="bar" style="width:84%"></div><div class="bar" style="width:88%"></div><div class="bar" style="width:46%"></div>
+      <div style="height:22px"></div><div class="bar" style="width:90%"></div><div class="bar" style="width:76%"></div><div class="bar" style="width:82%"></div>
+      <div style="height:22px"></div><div class="bar" style="width:70%"></div><div class="bar" style="width:86%"></div>
+    </div>
+    <div class="dock"><div class="rail"><iframe src="../panel.html?space=calendar"></iframe></div></div>
+  </div>
+</div>
+</body></html>
