@@ -30,6 +30,9 @@ declare global {
       onFocus: (cb: (snap: FocusSnapshot) => void) => () => void;
       puzzle: (difficulty: string) => Promise<{ ok: true; data: ChessPuzzle } | { ok: false; error: string }>;
       onState: (cb: (s: RailState) => void) => () => void;
+      agents: (req: AgentsReq) => Promise<FFRes>;
+      onAgents: (cb: (snap: AgentsSnapshot) => void) => () => void;
+      onAgentsOpen: (cb: (sessionId: string) => void) => () => void;
     };
   }
 }
@@ -187,4 +190,74 @@ export interface ChessPuzzle {
   rating: number;
   themes: string[];
   lastMove: string | null;
+}
+
+// ---- Agents (Claude Code sessions) -------------------------------------------
+// Mirrors src/main/agents.ts.
+
+export type AgentStatus = 'working' | 'permission' | 'question' | 'idle' | 'ended';
+
+export interface AgentStep {
+  id: string;
+  at: number;
+  kind: 'prompt' | 'tool' | 'reply' | 'permission' | 'question' | 'note';
+  title: string;
+  detail?: string;
+  state?: 'running' | 'waiting' | 'ok' | 'error' | 'denied';
+}
+
+export interface AgentQuestion {
+  question: string;
+  header: string;
+  multiSelect: boolean;
+  options: { label: string; description: string }[];
+}
+
+export interface AgentPending {
+  id: string;
+  kind: 'permission' | 'question';
+  tool: string;
+  title: string;
+  detail: string;
+  questions?: AgentQuestion[];
+  canAlways: boolean;
+  at: number;
+}
+
+export interface AgentSession {
+  id: string;
+  cwd: string;
+  project: string;
+  title: string;
+  host: string;
+  status: AgentStatus;
+  activity: string;
+  startedAt: number;
+  updatedAt: number;
+  steps: AgentStep[];
+  pending: AgentPending | null;
+  lastReply: string;
+}
+
+export interface AgentsSnapshot {
+  connected: boolean;
+  listening: boolean;
+  error: string | null;
+  sessions: AgentSession[];
+}
+
+export type AgentsReq =
+  | { op: 'get' }
+  | { op: 'connect' }
+  | { op: 'disconnect' }
+  | { op: 'decide'; id: string; pendingId: string; choice: 'allow' | 'always' | 'deny'; message?: string }
+  | { op: 'answer'; id: string; pendingId: string; answers: Record<string, string> }
+  | { op: 'jump'; id: string }
+  | { op: 'dismiss'; id: string }
+  | { op: 'clearEnded' };
+
+export async function agents(req: AgentsReq): Promise<AgentsSnapshot> {
+  const res = await window.rail.agents(req);
+  if (!res.ok) throw new Error(res.error);
+  return res.data as AgentsSnapshot;
 }

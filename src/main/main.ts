@@ -24,6 +24,8 @@ import { getSecret, setSecret } from './secrets';
 import * as ff from './fireflies';
 import * as ncal from './notionCal';
 import * as focusTimer from './focus';
+import * as agentHub from './agents';
+import { execFile } from 'node:child_process';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -62,6 +64,7 @@ const SPACES = [
   { id: 'meetings', name: 'Meetings' },
   { id: 'slack', name: 'Slack' },
   { id: 'calendar', name: 'Calendar' },
+  { id: 'agents', name: 'Agents' },
   { id: 'focus', name: 'Focus' }, // always last
 ] as const;
 
@@ -310,6 +313,7 @@ function layout() {
   slack?.setBounds({ x: 0, y: 0, width: w, height: ch });
   calendar.setBounds({ x: 0, y: 0, width: w, height: ch });
   focusView.setBounds({ x: 0, y: 0, width: w, height: ch });
+  agentsView.setBounds({ x: 0, y: 0, width: w, height: ch });
 }
 
 // Claude and Notion each get a whole space; Notion keeps its header bar.
@@ -406,6 +410,7 @@ function focusActive() {
     : id === 'slack' && slack ? slack.webContents
     : id === 'calendar' ? calendar.webContents
     : id === 'focus' ? focusView.webContents
+    : id === 'agents' ? agentsView.webContents
     : meetings.webContents;
   wc.focus();
 }
@@ -419,7 +424,8 @@ function state() {
     spaces: SPACES.map((s) => ({
       id: s.id,
       name: s.name,
-      badge: s.id === 'slack' ? slackUnread : 0, // no indicator on the Calendar dot (user preference)
+      // no indicator on the Calendar dot (user preference)
+      badge: s.id === 'slack' ? slackUnread : s.id === 'agents' ? agentsWaiting : 0,
     })),
     active,
     pinned: cfg.alwaysOnTop,
@@ -1011,6 +1017,93 @@ async function handleCal(req: CalReq): Promise<unknown> {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Agents: Claude Code sessions on this Mac (see agents.ts). Hooks in
+// ~/.claude/settings.json post each step to Rail; Rail answers permission
+// prompts and questions when you click in the Agents space.
+// ---------------------------------------------------------------------------
+
+let agentsView: WebContentsView;
+let agentsWaiting = 0;
+
+function startAgents() {
+  agentHub.start({
+    dataDir: app.getPath('userData'),
+    onChange: (snap) => {
+      if (agentsView && !agentsView.webContents.isDestroyed()) agentsView.webContents.send('rail:agents', snap);
+      const n = snap.sessions.filter((x) => x.pending).length;
+      if (n !== agentsWaiting) { agentsWaiting = n; broadcast(); }
+    },
+    onAttention: (s) => {
+      const looking = shown && win?.isVisible() && SPACES[active].id === 'agents';
+      if (looking || !Notification.isSupported()) return;
+      const n = new Notification({
+        title: s.pending?.kind === 'question' ? `${s.project} has a question` : `${s.project} needs permission`,
+        body: s.pending?.kind === 'question' ? s.pending.questions?.[0]?.question ?? '' : s.pending?.title ?? '',
+        silent: false,
+      });
+      n.on('click', () => openAgent(s.id));
+      n.show();
+    },
+  });
+}
+
+function openAgent(id: string) {
+  if (!shown || !win.isVisible()) showRail();
+  goTo(spaceIndex('agents'));
+  agentsView.webContents.send('rail:agents-open', id);
+}
+
+// Brings back the app the session runs in. Editors open on its folder, which
+// focuses the window that has it; terminals just come to the front.
+function jumpToAgent(id: string) {
+  const t = agentHub.jumpTarget(id);
+  if (!t) return;
+  const editor = /VS Code|Cursor|Windsurf|Zed/.test(t.host);
+  const args = t.bundleId ? ['-b', t.bundleId] : ['-a', t.host === 'VS Code' ? 'Visual Studio Code' : t.host === 'iTerm' ? 'iTerm' : t.host];
+  if (editor && t.cwd) args.push(t.cwd);
+  execFile('open', args, (err) => { if (err) console.warn('[rail] could not jump to agent', err.message); });
+}
+
+async function handleAgents(req: AgentsReq): Promise<unknown> {
+  switch (req.op) {
+    case 'get': break;
+    case 'connect': {
+      const { response } = await dialog.showMessageBox({
+        type: 'question',
+        buttons: ['Connect', 'Cancel'],
+        defaultId: 0,
+        cancelId: 1,
+        message: 'Connect Claude Code to Rail?',
+        detail:
+          'Rail adds a hook to ~/.claude/settings.json (it keeps a backup next to it). At each step, Claude Code tells Rail what it\u2019s doing; ' +
+          'permission prompts and questions wait for your click in Rail, or in Claude Code as usual. ' +
+          'Only Rail on this Mac can hear it. If Rail isn\u2019t running, Claude Code works exactly as before. ' +
+          'Sessions that are already open pick it up after a restart.',
+      });
+      if (response === 0) agentHub.installHooks();
+      break;
+    }
+    case 'disconnect': agentHub.uninstallHooks(); break;
+    case 'decide': agentHub.decide(req.id, req.pendingId, req.choice, req.message); break;
+    case 'answer': agentHub.answer(req.id, req.pendingId, req.answers); break;
+    case 'jump': jumpToAgent(req.id); break;
+    case 'dismiss': agentHub.dismiss(req.id); break;
+    case 'clearEnded': agentHub.clearEnded(); break;
+  }
+  return agentHub.snapshot();
+}
+
+type AgentsReq =
+  | { op: 'get' }
+  | { op: 'connect' }
+  | { op: 'disconnect' }
+  | { op: 'decide'; id: string; pendingId: string; choice: 'allow' | 'always' | 'deny'; message?: string }
+  | { op: 'answer'; id: string; pendingId: string; answers: Record<string, string> }
+  | { op: 'jump'; id: string }
+  | { op: 'dismiss'; id: string }
+  | { op: 'clearEnded' };
+
 function createWindow() {
   const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
   win = new BaseWindow({
@@ -1048,16 +1141,21 @@ function createWindow() {
   calendar = createShellView('calendar');
   calendarContainer.addChildView(calendar);
 
+  const agentsContainer = new View();
+  agentsView = createShellView('agents');
+  agentsContainer.addChildView(agentsView);
+
   const focusContainer = new View();
   focusView = createShellView('focus');
   focusContainer.addChildView(focusView);
 
-  containers.push(claudeSpace, notionSpace, meet, slackContainer, calendarContainer, focusContainer);
+  containers.push(claudeSpace, notionSpace, meet, slackContainer, calendarContainer, agentsContainer, focusContainer);
   win.contentView.addChildView(claudeSpace);
   win.contentView.addChildView(notionSpace);
   win.contentView.addChildView(meet);
   win.contentView.addChildView(slackContainer);
   win.contentView.addChildView(calendarContainer);
+  win.contentView.addChildView(agentsContainer);
   win.contentView.addChildView(focusContainer);
   win.contentView.addChildView(strip);
 
@@ -1333,6 +1431,15 @@ if (!app.requestSingleInstanceLock()) {
       }
     });
 
+    ipcMain.handle('agents', async (e, req: AgentsReq) => {
+      if (!shellIds.has(e.sender.id)) return { ok: false, error: 'Not allowed' };
+      try {
+        return { ok: true, data: await handleAgents(req) };
+      } catch (err) {
+        return { ok: false, error: (err as Error).message };
+      }
+    });
+
     ipcMain.on('rail:cmd', (e, cmd: Cmd) => {
       if (!shellIds.has(e.sender.id)) return; // only Rail's own UI may send commands
       handleCmd(cmd);
@@ -1368,6 +1475,7 @@ if (!app.requestSingleInstanceLock()) {
     focusTimer.init((snap) => focusView?.webContents.send('rail:focus', snap), focusDone);
     buildMenu();
     createWindow();
+    startAgents();
     ready = true;
     void refreshCalendar();
     setInterval(() => void refreshCalendar(), 5 * 60 * 1000);

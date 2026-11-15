@@ -20,6 +20,17 @@ contextBridge.exposeInMainWorld('rail', {
     ipcRenderer.on('rail:focus', listener);
     return () => ipcRenderer.removeListener('rail:focus', listener);
   },
+  agents: (req: unknown) => ipcRenderer.invoke('agents', req),
+  onAgents: (cb: (snap: unknown) => void) => {
+    const listener = (_e: IpcRendererEvent, snap: unknown) => cb(snap);
+    ipcRenderer.on('rail:agents', listener);
+    return () => ipcRenderer.removeListener('rail:agents', listener);
+  },
+  onAgentsOpen: (cb: (id: string) => void) => {
+    const listener = (_e: IpcRendererEvent, id: string) => cb(id);
+    ipcRenderer.on('rail:agents-open', listener);
+    return () => ipcRenderer.removeListener('rail:agents-open', listener);
+  },
   onState: (cb: (state: unknown) => void) => {
     const listener = (_e: IpcRendererEvent, state: unknown) => cb(state);
     ipcRenderer.on('rail:state', listener);

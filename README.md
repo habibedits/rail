@@ -4,13 +4,13 @@
 
 **Rail is a side panel that lives on the right edge of your Mac.** It keeps the tools you check all day (Claude, Notion, your meeting recaps, Slack, today's calendar and a focus timer) one keystroke away, without another browser tab or another app window.
 
-Press `⌃` `` ` `` anywhere to slide it in or out. Swipe with two fingers on the panel, or press `⌃1` to `⌃6`, to move between spaces.
+Press `⌃` `` ` `` anywhere to slide it in or out. Swipe with two fingers on the panel, or press `⌃1` to `⌃7`, to move between spaces.
 
 > All names, companies and meetings in these images are made up.
 
 ---
 
-## Six spaces, one panel
+## Seven spaces, one panel
 
 <img src="docs/images/spaces.png" alt="The six spaces: Claude, Notion, Meetings, Slack, Calendar and Focus" width="100%">
 
@@ -21,7 +21,8 @@ Press `⌃` `` ` `` anywhere to slide it in or out. Swipe with two fingers on th
 | 🎙️ | **Meetings** | `⌃3` | Fireflies recaps, action items, transcripts and live calls. |
 | 💬 | **Slack** | `⌃4` | Slack, completely silent. Unreads show as a count on its dot. |
 | 📅 | **Calendar** | `⌃5` | Today from every Notion Calendar account, in one view. |
-| 🍅 | **Focus** | `⌃6` | A Pomodoro timer, a streak grid, Sudoku and chess puzzles. |
+| 🤖 | **Agents** | `⌃6` | Every Claude Code session as a little buddy: what it's doing, Allow, answers. |
+| 🍅 | **Focus** | `⌃7` | A Pomodoro timer, a streak grid, Sudoku and chess puzzles. |
 
 ---
 
@@ -43,6 +44,19 @@ Press `⌃` `` ` `` anywhere to slide it in or out. Swipe with two fingers on th
 - Open one for the **overview, action items grouped by person, keywords and the full transcript**. Timestamps jump to that moment in the recording.
 - **Live now:** while Fireflies is in a call, follow the transcript as it happens.
 - **Send to Claude** drops the whole transcript into a new Claude chat, so you can ask for a follow-up email or a summary.
+
+## 🤖 Agents
+
+When Claude Code is minimized, you can't see what your agents are doing. The Agents space shows you.
+
+- **A buddy per session.** Every Claude Code session on your Mac (VS Code, Cursor, Terminal, iTerm…) gets its own little creature. It bobs while it works, hops with a **!** or **?** when it needs you, and dozes when it's done. The Agents dot counts the ones waiting on you.
+- **Click one** to follow it step by step: your prompt, each file it reads or edits, each command, and its reply.
+- **Allow / Deny** permission prompts right there (or **Always allow**). Claude Code's own prompt still shows too; whichever you answer first wins.
+- **Answer its questions** without opening the editor: pick an option or type your own.
+- **Open in VS Code** (or whichever app it runs in) jumps back to its window. **✕** crosses a session off; **Clear done** clears every finished one.
+- A notification when an agent needs you while Rail is hidden or on another space.
+
+**Set up:** open the Agents space and click **Connect Claude Code**. Rail adds a hook to `~/.claude/settings.json` (and keeps a backup next to it). At each step, Claude Code posts what it's doing to Rail on `127.0.0.1` only. If Rail isn't running, Claude Code works exactly as before. Sessions that were already open pick it up after a restart. **Disconnect Claude Code**, at the bottom of the space, removes the hook.
 
 ## 📓 Notion
 
@@ -97,7 +111,7 @@ Rail isn't code-signed. If macOS blocks it the first time, right-click Rail in A
 | Do this | To |
 | --- | --- |
 | `⌃` `` ` `` | Show or hide Rail, from any app |
-| `⌃1` … `⌃6` | Jump to a space (while Rail has focus) |
+| `⌃1` … `⌃7` | Jump to a space (while Rail has focus) |
 | `⌃⌥←` / `⌃⌥→`, or a two-finger swipe on the panel | Previous / next space |
 | Pin button (top strip) | Keep Rail above other windows |
 | Hide button (top strip) | Slide Rail away |
@@ -107,7 +121,7 @@ Rail isn't code-signed. If macOS blocks it the first time, right-click Rail in A
 - **Nothing personal is in this repo.** Your logins, the Fireflies key, Notion Calendar access and Focus history live only on the Mac you set up.
 - Logins live in Rail's own browser storage in `~/Library/Application Support/Rail`. The Fireflies key and Notion Calendar tokens are encrypted with the macOS Keychain.
 - Someone who clones the repo gets the code, not your accounts. They sign in to their own.
-- Rail talks only to the services you use (claude.ai, Notion, Slack, Fireflies, Lichess) and has no analytics.
+- Rail talks only to the services you use (claude.ai, Notion, Slack, Fireflies, Lichess) and has no analytics. The Agents space listens only on `127.0.0.1`, and only to Claude Code hooks that carry its private token.
 
 ---
 
@@ -124,6 +138,7 @@ npm run dev
 
 - `src/main/main.ts`: the window, docking, spaces, link handling and IPC.
 - `src/main/notionCal.ts`: Notion Calendar through Notion's MCP server.
+- `src/main/agents.ts`: the Agents space. A local server for Claude Code hooks, session state, and installing or removing the hook.
 - `src/main/config.ts`: settings that aren't secret (`config.json` in Rail's userData).
 - `src/main/secrets.ts`: Keychain-encrypted secrets.
 - `src/preload/`: `web.ts` for the sites (swipe, Slack silencing), `shell.ts` for Rail's own UI (the `window.rail` bridge), `swipe.ts` for gesture detection.
