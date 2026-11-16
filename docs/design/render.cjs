@@ -7,7 +7,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const [outDir, ...jobs] = process.argv.slice(2).filter((a) => !a.startsWith('--') && !a.endsWith('render.cjs') && a !== '.');
-const BASE = process.env.DESIGN_URL || 'http://localhost:5181/';
+const BASE = process.env.DESIGN_URL || 'http://127.0.0.1:5181/';
 
 app.disableHardwareAcceleration();
 app.on('window-all-closed', () => {}); // keep going between pages

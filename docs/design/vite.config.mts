@@ -7,5 +7,5 @@ import path from 'node:path';
 export default defineConfig({
   root: __dirname,
   plugins: [react()],
-  server: { port: 5181, strictPort: true, fs: { allow: [path.resolve(__dirname, '../..')] } },
+  server: { host: '127.0.0.1', port: 5181, strictPort: true, fs: { allow: [path.resolve(__dirname, '../..')] } },
 });

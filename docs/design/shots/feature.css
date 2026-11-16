@@ -8,3 +8,6 @@
 .mac-menu div { padding: 5px 10px; border-radius: 5px; display: flex; flex-direction: column; }
 .mac-menu div small { color: #86868b; font-size: 11px; margin-top: 2px; }
 .mac-menu div.hi { background: #3b82f6; color: #fff; } .mac-menu div.hi small { color: rgba(255,255,255,.8); }
+.shot { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.shot .cap { display: flex; align-items: center; gap: 8px; font-size: 15px; color: var(--ink); font-weight: 500; }
+.shot .cap .kbd { font-size: 13px; }

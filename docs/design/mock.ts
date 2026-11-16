@@ -20,8 +20,8 @@ class FakeDate extends RealDate {
 
 const params = new URLSearchParams(location.search);
 export const SPACE = params.get('space') ?? 'calendar';
-const SPACES = ['claude', 'notion', 'meetings', 'slack', 'calendar', 'focus'];
-const NAMES: Record<string, string> = { claude: 'Claude', notion: 'Notion', meetings: 'Meetings', slack: 'Slack', calendar: 'Calendar', focus: 'Focus' };
+const SPACES = ['claude', 'notion', 'meetings', 'slack', 'calendar', 'agents', 'focus'];
+const NAMES: Record<string, string> = { claude: 'Claude', notion: 'Notion', meetings: 'Meetings', slack: 'Slack', calendar: 'Calendar', agents: 'Agents', focus: 'Focus' };
 
 const day = new Date(); day.setHours(0, 0, 0, 0);
 const at = (h: number, m = 0) => day.getTime() + (h * 60 + m) * 60000;
@@ -112,7 +112,7 @@ const liveSentences = [
 
 const ok = (data: unknown) => Promise.resolve({ ok: true, data });
 const state = {
-  spaces: SPACES.map((id) => ({ id, name: NAMES[id], badge: id === 'slack' ? 3 : 0 })),
+  spaces: SPACES.map((id) => ({ id, name: NAMES[id], badge: id === 'slack' ? 3 : id === 'agents' ? 1 : 0 })),
   active: SPACES.indexOf(SPACE),
   pinned: false,
   collapsed: 'none',
@@ -132,7 +132,7 @@ const state = {
   // &wheel=N shows the space wheel with slice N picked (&wheel=-1: none, &sticky=1: click mode)
   onWheel: (cb: (w: unknown) => void) => {
     const hover = Number(params.get('wheel'));
-    const a = -Math.PI / 2 + hover * (Math.PI / 3);
+    const a = -Math.PI / 2 + hover * ((2 * Math.PI) / SPACES.length);
     setTimeout(() => cb({
       open: true, cx: 192, cy: 440, r: 138, spaces: state.spaces, active: state.active, hover,
       px: hover >= 0 ? Math.round(60 * Math.cos(a)) : 0, py: hover >= 0 ? Math.round(60 * Math.sin(a)) : 0,

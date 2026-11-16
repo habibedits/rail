@@ -108,6 +108,8 @@ Rail isn't code-signed. If macOS blocks it the first time, right-click Rail in A
 
 ## 🎯 Space wheel
 
+<img src="docs/images/wheel.png" alt="The space wheel open over Notion (mouse) and over Calendar (trackpad, holding Option)" width="100%">
+
 Jump to any space without hunting for its dot, like a ping wheel in a game.
 
 - **Mouse:** hold the **middle button** (click the scroll wheel) anywhere on Rail. A ring of every space pops up. Nudge toward one and **let go**: the last highlighted space opens. It goes by direction, not distance, so a small flick is enough.
@@ -167,10 +169,10 @@ npx vite --config docs/design/vite.config.mts
 In a second terminal:
 
 ```bash
-TZ=America/New_York DESIGN_WAIT=6000 npx electron docs/design/render.cjs docs/images hero=shots/hero.html@1600x900 spaces=shots/spaces.html@1990x980 calendar=shots/calendar.html@1600x1000 meetings=shots/meetings.html@1600x1000 focus=shots/focus.html@1600x1000 notion=shots/notion.html@1600x1000
+TZ=America/New_York DESIGN_WAIT=6000 npx electron docs/design/render.cjs docs/images hero=shots/hero.html@1600x900 spaces=shots/spaces.html@1990x980 calendar=shots/calendar.html@1600x1000 meetings=shots/meetings.html@1600x1000 focus=shots/focus.html@1600x1000 notion=shots/notion.html@1600x1000 wheel=shots/wheel.html@1600x1000
 ```
 
-Open `http://localhost:5181/panel.html?space=calendar` (or `meetings`, `focus`, `notion`, `slack`, `claude`) to see a single panel.
+Open `http://127.0.0.1:5181/panel.html?space=calendar` (or `meetings`, `focus`, `notion`, `slack`, `claude`) to see a single panel.
 
 ### Debugging
 
