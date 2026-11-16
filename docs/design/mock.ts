@@ -129,6 +129,17 @@ const state = {
     error: null,
   }),
   onCal: () => () => {},
+  // &wheel=N shows the space wheel with slice N picked (&wheel=-1: none, &sticky=1: click mode)
+  onWheel: (cb: (w: unknown) => void) => {
+    const hover = Number(params.get('wheel'));
+    const a = -Math.PI / 2 + hover * (Math.PI / 3);
+    setTimeout(() => cb({
+      open: true, cx: 192, cy: 440, r: 138, spaces: state.spaces, active: state.active, hover,
+      px: hover >= 0 ? Math.round(60 * Math.cos(a)) : 0, py: hover >= 0 ? Math.round(60 * Math.sin(a)) : 0,
+      sticky: params.get('sticky') === '1', via: params.get('via') === 'key' ? 'key' : 'mouse',
+    }), 300);
+    return () => {};
+  },
   focus: () => Promise.resolve(focusSnap),
   onFocus: () => () => {},
   puzzle: () => ok({ id: 'demo', fen: 'r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4', solution: ['h5f7'], rating: 1184, themes: ['mateIn1'], lastMove: 'g8f6' }),

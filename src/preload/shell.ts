@@ -1,8 +1,10 @@
 // Preload for Rail's own UI views. Only these get the `rail` bridge.
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
 import { installSwipe } from './swipe';
+import { installWheelTrigger } from './wheel';
 
 installSwipe((dir) => ipcRenderer.send('rail:swipe', dir));
+installWheelTrigger((sig) => ipcRenderer.send('rail:wheel', sig));
 
 contextBridge.exposeInMainWorld('rail', {
   send: (cmd: unknown) => ipcRenderer.send('rail:cmd', cmd),
@@ -30,6 +32,11 @@ contextBridge.exposeInMainWorld('rail', {
     const listener = (_e: IpcRendererEvent, id: string) => cb(id);
     ipcRenderer.on('rail:agents-open', listener);
     return () => ipcRenderer.removeListener('rail:agents-open', listener);
+  },
+  onWheel: (cb: (w: unknown) => void) => {
+    const listener = (_e: IpcRendererEvent, w: unknown) => cb(w);
+    ipcRenderer.on('rail:wheel', listener);
+    return () => ipcRenderer.removeListener('rail:wheel', listener);
   },
   onState: (cb: (state: unknown) => void) => {
     const listener = (_e: IpcRendererEvent, state: unknown) => cb(state);

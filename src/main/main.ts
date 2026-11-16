@@ -18,6 +18,7 @@ import {
   WebContentsView,
 } from 'electron';
 import path from 'node:path';
+import { spawn, type ChildProcess } from 'node:child_process';
 import { Config, loadConfig, saveConfig } from './config';
 import { arcInstalled, importFromArc } from './arcImport';
 import { getSecret, setSecret } from './secrets';
@@ -230,6 +231,7 @@ function wireCrashRecovery(view: WebContentsView, fallbackUrl: string) {
 // Ctrl+Option+←/→ and Ctrl+1/2 work whenever any part of Rail has focus.
 function attachKeys(wc: WebContents) {
   wc.on('before-input-event', (e, input) => {
+    if (wheelKey(e, input)) return;
     if (input.type !== 'keyDown') return;
     if (input.control && input.alt && !input.meta) {
       if (input.key === 'ArrowRight') { e.preventDefault(); goTo(active + 1); }
@@ -244,6 +246,155 @@ function attachKeys(wc: WebContents) {
       }
     }
   });
+}
+
+// ---------------------------------------------------------------------------
+// Space wheel: hold the middle mouse button (or, on a trackpad, hold Option),
+// nudge toward a space and let go. Picking goes by direction, not distance,
+// so a small nudge is enough. A quick click (or a quick Option hold) leaves
+// the wheel open so you can click a slice. Esc or the middle cancels; 1–6 pick.
+// The main process follows the pointer itself, so it works whichever pane the
+// click started in.
+// ---------------------------------------------------------------------------
+
+const WHEEL_DEAD = 14; // px the pointer must travel before a slice is picked
+const WHEEL_TAP_MS = 350; // let go sooner than this without picking: stays open
+const WHEEL_KEY_HOLD_MS = 280; // Option held alone this long opens the wheel
+
+let wheelView: WebContentsView;
+let wheel: null | {
+  via: 'mouse' | 'key';
+  ox: number; oy: number; // screen point the pointer is measured from
+  cx: number; cy: number; r: number; // ring center and radius, window content pixels
+  openedAt: number;
+  sticky: boolean;
+  hover: number;
+  px: number; py: number;
+  timer: NodeJS.Timeout;
+} = null;
+let optionTimer: NodeJS.Timeout | undefined;
+
+// Once the wheel is drawn on top, macOS stops passing the middle button's
+// release to the page underneath, so ask macOS directly: a small helper polls
+// the button state and prints "up" when it's let go.
+const RELEASE_WATCH = `ObjC.import('AppKit'); function run() { for (let i = 0; i < 3000; i++) { if (($.NSEvent.pressedMouseButtons & 4) === 0) return 'up'; delay(0.016); } return 'timeout'; }`;
+let releaseWatch: ChildProcess | null = null;
+
+function watchMiddleRelease() {
+  releaseWatch?.kill();
+  const p = spawn('/usr/bin/osascript', ['-l', 'JavaScript', '-e', RELEASE_WATCH], { stdio: ['ignore', 'pipe', 'ignore'] });
+  releaseWatch = p;
+  p.stdout?.on('data', (d) => { if (releaseWatch === p && String(d).includes('up') && wheel?.via === 'mouse') wheelRelease(); });
+  p.on('exit', () => { if (releaseWatch === p) releaseWatch = null; });
+  p.on('error', () => { if (releaseWatch === p) releaseWatch = null; });
+}
+
+function sendWheel() {
+  if (!wheelView || wheelView.webContents.isDestroyed()) return;
+  const s = state();
+  wheelView.webContents.send('rail:wheel', wheel
+    ? { open: true, cx: wheel.cx, cy: wheel.cy, r: wheel.r, spaces: s.spaces, active, hover: wheel.hover, px: wheel.px, py: wheel.py, sticky: wheel.sticky, via: wheel.via }
+    : { open: false });
+}
+
+function openWheel(via: 'mouse' | 'key') {
+  if (wheel || !shown || !win.isVisible()) return;
+  const cur = screen.getCursorScreenPoint();
+  const cb = win.getContentBounds();
+  const r = Math.max(80, Math.min(138, Math.floor(cb.width / 2) - 16));
+  const clamp = (v: number, lo: number, hi: number) => (lo > hi ? (lo + hi) / 2 : Math.min(hi, Math.max(lo, v)));
+  const cx = Math.round(clamp(cur.x - cb.x, r + 12, cb.width - r - 12));
+  const cy = Math.round(clamp(cur.y - cb.y, STRIP_H + r + 12, cb.height - r - 12));
+  wheel = { via, ox: cur.x, oy: cur.y, cx, cy, r, openedAt: Date.now(), sticky: false, hover: -1, px: 0, py: 0, timer: setInterval(trackWheel, 16) };
+  wheelView.setBounds({ x: 0, y: 0, width: cb.width, height: cb.height });
+  wheelView.setVisible(true);
+  sendWheel();
+  if (via === 'mouse') watchMiddleRelease();
+}
+
+function trackWheel() {
+  if (!wheel) return;
+  const cur = screen.getCursorScreenPoint();
+  const px = cur.x - wheel.ox;
+  const py = cur.y - wheel.oy;
+  const d = Math.hypot(px, py);
+  const n = SPACES.length;
+  const seg = 360 / n;
+  const deg = (Math.atan2(py, px) * 180) / Math.PI + 90 + seg / 2; // 0 = straight up
+  let hover = Math.floor((((deg % 360) + 360) % 360) / seg);
+  if (wheel.sticky ? d < wheel.r * 0.38 || d > wheel.r + 40 : d < WHEEL_DEAD) hover = -1;
+  if (hover === wheel.hover && px === wheel.px && py === wheel.py) return;
+  Object.assign(wheel, { hover, px, py });
+  sendWheel();
+}
+
+// The trigger was let go (middle button up, or Option up).
+function wheelRelease() {
+  if (!wheel || wheel.sticky) return;
+  trackWheel();
+  if (wheel.hover >= 0) wheelPick(wheel.hover);
+  else if (Date.now() - wheel.openedAt < WHEEL_TAP_MS) {
+    // Stay open; from now on the pointer is measured from the ring's center,
+    // so the slice under the pointer is the one you get.
+    const cb = win.getContentBounds();
+    Object.assign(wheel, { sticky: true, ox: cb.x + wheel.cx, oy: cb.y + wheel.cy });
+    releaseWatch?.kill();
+    releaseWatch = null;
+    trackWheel();
+    sendWheel();
+  } else closeWheel();
+}
+
+function wheelClick() {
+  if (!wheel) return;
+  trackWheel();
+  if (wheel.hover >= 0) wheelPick(wheel.hover);
+  else closeWheel();
+}
+
+function wheelPick(i: number) {
+  closeWheel();
+  if (i !== active) goTo(i);
+}
+
+function closeWheel() {
+  if (!wheel) return;
+  clearInterval(wheel.timer);
+  wheel = null;
+  releaseWatch?.kill();
+  releaseWatch = null;
+  wheelView.setVisible(false);
+  sendWheel();
+  focusActive();
+}
+
+// Keys for the wheel. Returns true when the key was used.
+function wheelKey(e: Electron.Event, input: Electron.Input) {
+  const isAlt = input.key === 'Alt';
+  if (input.type === 'keyDown') {
+    if (wheel) {
+      if (isAlt) return true;
+      const m = /^Digit([1-9])$/.exec(input.code);
+      if (input.key === 'Escape') { e.preventDefault(); closeWheel(); return true; }
+      if (m && Number(m[1]) <= SPACES.length) { e.preventDefault(); wheelPick(Number(m[1]) - 1); return true; }
+      if (input.key === 'Enter') { e.preventDefault(); wheelClick(); return true; }
+      closeWheel(); // any other key: close, and let the key through
+      return false;
+    }
+    if (isAlt && !input.control && !input.meta && !input.shift && !input.isAutoRepeat && cfg.wheelOption) {
+      clearTimeout(optionTimer);
+      optionTimer = setTimeout(() => { optionTimer = undefined; openWheel('key'); }, WHEEL_KEY_HOLD_MS);
+    } else if (optionTimer) {
+      clearTimeout(optionTimer); // Option+key is a shortcut, not a wheel hold
+      optionTimer = undefined;
+    }
+    return false;
+  }
+  if (input.type === 'keyUp' && isAlt) {
+    if (optionTimer) { clearTimeout(optionTimer); optionTimer = undefined; }
+    else if (wheel?.via === 'key') wheelRelease();
+  }
+  return false;
 }
 
 // ---------------------------------------------------------------------------
@@ -277,6 +428,7 @@ function showRail() {
 }
 
 function hideRail() {
+  closeWheel();
   const b = win.getBounds();
   shown = false;
   win.setBounds({ ...b, x: b.x + b.width }, true);
@@ -583,6 +735,7 @@ function broadcast() {
 }
 
 type Cmd =
+  | { type: 'wheel'; action: 'click' | 'cancel' }
   | { type: 'hello' }
   | { type: 'goto'; index: number }
   | { type: 'pin' }
@@ -601,6 +754,10 @@ function handleCmd(cmd: Cmd) {
       break;
     case 'goto':
       goTo(cmd.index);
+      break;
+    case 'wheel':
+      if (cmd.action === 'click') wheelClick();
+      else closeWheel();
       break;
     case 'pin':
       setPinned(!cfg.alwaysOnTop);
@@ -1158,11 +1315,20 @@ function createWindow() {
   win.contentView.addChildView(agentsContainer);
   win.contentView.addChildView(focusContainer);
   win.contentView.addChildView(strip);
+  wheelView = createShellView('wheel'); // the space wheel, on top of everything
+  wheelView.setBackgroundColor('#00000000');
+  wheelView.setVisible(false);
+  win.contentView.addChildView(wheelView);
 
   active = Math.min(cfg.activeSpace, SPACES.length - 1);
   if (SPACES[active].id === 'slack') ensureSlack();
   layout();
   win.on('resize', layout);
+  win.on('blur', () => {
+    clearTimeout(optionTimer);
+    optionTimer = undefined;
+    closeWheel();
+  });
   win.show();
   focusActive();
 }
@@ -1221,6 +1387,12 @@ function buildMenu() {
           { role: 'about' },
           { type: 'separator' },
           { label: 'Import Logins from Arc\u2026', click: () => void runArcImport() },
+          {
+            label: 'Hold Option for Space Wheel',
+            type: 'checkbox',
+            checked: cfg.wheelOption,
+            click: (item) => { cfg.wheelOption = item.checked; saveConfig(cfg); },
+          },
           {
             label: 'Open Notion Links in Rail',
             type: 'checkbox',
@@ -1452,6 +1624,11 @@ if (!app.requestSingleInstanceLock()) {
         const fe = err instanceof ff.FirefliesError ? err : null;
         return { ok: false, error: (err as Error).message, auth: fe?.auth ?? false };
       }
+    });
+    ipcMain.on('rail:wheel', (_e, sig: string) => {
+      if (sig === 'down') { if (wheel) wheelClick(); else openWheel('mouse'); }
+      else if (sig === 'up') { if (wheel?.via === 'mouse') wheelRelease(); }
+      else if (sig === 'altclick') { clearTimeout(optionTimer); optionTimer = undefined; }
     });
     ipcMain.on('rail:swipe', (_e, dir: number) => {
       if (dir === 1 || dir === -1) goTo(active + dir);

@@ -5,8 +5,10 @@ import { ipcRenderer, webFrame } from 'electron';
 import { installSwipe } from './swipe';
 import { installNotionCompact } from './notionCompact';
 import { installSlackCompact } from './slackCompact';
+import { installWheelTrigger } from './wheel';
 
 installSwipe((dir) => ipcRenderer.send('rail:swipe', dir));
+installWheelTrigger((sig) => ipcRenderer.send('rail:wheel', sig));
 
 if (/(^|\.)notion\.(so|com)$/.test(location.hostname) && location.hostname !== 'calendar.notion.so') installNotionCompact();
 if (location.hostname === 'app.slack.com') installSlackCompact();

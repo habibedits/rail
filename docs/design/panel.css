@@ -60,3 +60,6 @@ html, body, #root { height: 100%; }
 .s-input { margin: 12px; border: 1px solid #ccc; border-radius: 8px; padding: 11px 12px; color: #999; font-size: 14px; }
 .fk-col > .fk { flex: 1; }
 .n-todo li.done::after { content: ''; }
+.panel { position: relative; }
+.panel-wheel { position: absolute; inset: 0; z-index: 50; }
+.panel-wheel .wheel-root { position: absolute; }

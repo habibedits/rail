@@ -106,6 +106,16 @@ Rail isn't code-signed. If macOS blocks it the first time, right-click Rail in A
 2. **Calendar:** open the Calendar space and click **Connect**. Approve Rail in Notion in your browser. Rail reads every account you've added to Notion Calendar.
 3. **Meetings:** open the Meetings space and paste your Fireflies API key (in Fireflies: **Integrations → Fireflies API**). It's stored encrypted in your Keychain.
 
+## 🎯 Space wheel
+
+Jump to any space without hunting for its dot, like a ping wheel in a game.
+
+- **Mouse:** hold the **middle button** (click the scroll wheel) anywhere on Rail. A ring of every space pops up. Nudge toward one and **let go**: the last highlighted space opens. It goes by direction, not distance, so a small flick is enough.
+- **Trackpad:** hold **Option (⌥)** for a moment, glide your finger toward a space, and **let go of Option**.
+- **Quick click instead of hold:** a quick middle click (or a short Option hold) leaves the wheel open. Click a slice to go there.
+- While it's open, `1`–`7` pick directly, and `Esc`, or letting go in the middle, cancels.
+- Don't want Option to open it? Untick **Rail menu → Hold Option for Space Wheel**.
+
 ## Keyboard and gestures
 
 | Do this | To |
@@ -113,6 +123,7 @@ Rail isn't code-signed. If macOS blocks it the first time, right-click Rail in A
 | `⌃` `` ` `` | Show or hide Rail, from any app |
 | `⌃1` … `⌃7` | Jump to a space (while Rail has focus) |
 | `⌃⌥←` / `⌃⌥→`, or a two-finger swipe on the panel | Previous / next space |
+| Hold the middle mouse button, or hold `⌥` | Space wheel: nudge toward a space and let go |
 | Pin button (top strip) | Keep Rail above other windows |
 | Hide button (top strip) | Slide Rail away |
 

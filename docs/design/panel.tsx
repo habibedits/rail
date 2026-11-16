@@ -13,6 +13,7 @@ import { Divider } from '../../src/renderer/Divider';
 import { Meetings } from '../../src/renderer/Meetings';
 import { Calendar } from '../../src/renderer/Calendar';
 import { Focus } from '../../src/renderer/Focus';
+import { Wheel } from '../../src/renderer/Wheel';
 
 const q = new URLSearchParams(location.search);
 
@@ -131,5 +132,6 @@ createRoot(document.getElementById('root')!).render(
   <div className="panel">
     <div className="panel-strip"><Strip /></div>
     <div className="panel-body"><Body /></div>
+    {q.get('wheel') !== null && <div className="panel-wheel"><Wheel /></div>}
   </div>,
 );

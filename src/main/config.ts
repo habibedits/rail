@@ -16,6 +16,7 @@ export interface Config {
   calendarsOn: Record<string, boolean>; // Calendar space: per-calendar on/off (else Google's own setting)
   slackNoticeShown: boolean; // one-time "turn off Slack desktop notifications" tip
   spacesVersion: number; // 2 = Claude and Notion are separate spaces, 3 = Agents before Focus
+  wheelOption: boolean; // holding Option opens the space wheel (trackpad-friendly)
 }
 
 const DEFAULTS: Config = {
@@ -31,6 +32,7 @@ const DEFAULTS: Config = {
   notionLinksInitialized: false,
   calendarsOn: {},
   spacesVersion: 1, // a config file from before versions existed
+  wheelOption: true,
 };
 
 const file = () => path.join(app.getPath('userData'), 'config.json');

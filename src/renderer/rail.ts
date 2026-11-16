@@ -8,8 +8,21 @@ export interface RailState {
   notion: { title: string; canBack: boolean; canForward: boolean };
 }
 
+// The space wheel (drawn by the `wheel` view, run by the main process).
+export interface WheelState {
+  open: boolean;
+  cx: number; cy: number; r: number; // ring center and radius, in the wheel view's pixels
+  spaces: RailState['spaces'];
+  active: number;
+  hover: number; // -1 = none (pointer still in the middle)
+  px: number; py: number; // pointer offset from the center (the reticle)
+  sticky: boolean; // opened by a quick click: stays open until you click a slice
+  via: 'mouse' | 'key';
+}
+
 export type Cmd =
   | { type: 'goto'; index: number }
+  | { type: 'wheel'; action: 'click' | 'cancel' }
   | { type: 'pin' }
   | { type: 'hide' }
   | { type: 'pane'; pane: 'claude' | 'notion'; action: 'back' | 'forward' | 'reload' | 'home' | 'new' | 'external' | 'app' }
@@ -33,6 +46,7 @@ declare global {
       agents: (req: AgentsReq) => Promise<FFRes>;
       onAgents: (cb: (snap: AgentsSnapshot) => void) => () => void;
       onAgentsOpen: (cb: (sessionId: string) => void) => () => void;
+      onWheel: (cb: (w: WheelState) => void) => () => void;
     };
   }
 }
