@@ -2,6 +2,7 @@ import {
   app,
   BaseWindow,
   clipboard,
+  desktopCapturer,
   dialog,
   Display,
   Menu,
@@ -13,6 +14,7 @@ import {
   screen,
   session,
   shell,
+  systemPreferences,
   View,
   WebContents,
   WebContentsView,
@@ -171,6 +173,14 @@ function wireLinks(wc: WebContents, ownHosts: string[], inPaneHosts: string[]) {
     // A real popup (window.open with features), e.g. Notion/Google sign-in,
     // must stay a popup so it can hand the result back to its opener.
     const isPopup = disposition === 'new-window';
+    // A blank popup the site fills in itself, like Slack's "open huddle in a
+    // new window": allow it, at a size that suits a call.
+    if (isPopup && (url === '' || url === 'about:blank') && hostMatches(wc.getURL(), ownHosts)) {
+      return {
+        action: 'allow',
+        overrideBrowserWindowOptions: { width: 760, height: 500, minWidth: 360, minHeight: 260, autoHideMenuBar: true, backgroundColor: '#1a1d21' },
+      };
+    }
     if (hostMatches(url, AUTH_HOSTS) || (isPopup && hostMatches(url, ownHosts))) {
       return {
         action: 'allow',
@@ -1586,8 +1596,62 @@ async function sendToClaude(text: string): Promise<'pasted' | 'copied'> {
 function allowedPermissions(ses: Electron.Session, extra: string[] = []) {
   // Microphone for Claude voice and Slack huddles; clipboard for copy buttons.
   // Nothing else: no site gets notifications.
-  const ok = new Set(['media', 'clipboard-read', 'clipboard-sanitized-write', 'fullscreen', ...extra]);
+  const ok = new Set(['media', 'display-capture', 'clipboard-read', 'clipboard-sanitized-write', 'fullscreen', ...extra]);
   ses.setPermissionRequestHandler((_wc, permission, cb) => cb(ok.has(permission)));
+  allowScreenShare(ses);
+}
+
+// Screen sharing and screen recording (Slack huddles and clips, Claude, Notion).
+// Electron refuses every getDisplayMedia() request unless the app hands it a
+// source, so Rail shows a small native menu: a screen or a window.
+function allowScreenShare(ses: Electron.Session) {
+  ses.setDisplayMediaRequestHandler((_req, cb) => {
+    let done = false;
+    const answer = (r: Parameters<typeof cb>[0]) => { if (!done) { done = true; cb(r); } };
+    void (async () => {
+      const status = systemPreferences.getMediaAccessStatus('screen');
+      let sources: Electron.DesktopCapturerSource[] = [];
+      try {
+        sources = await desktopCapturer.getSources({ types: ['screen', 'window'], thumbnailSize: { width: 0, height: 0 } });
+      } catch { /* no permission yet */ }
+      if (systemPreferences.getMediaAccessStatus('screen') !== 'granted') {
+        answer({});
+        // First time, macOS shows its own prompt; Rail explains only when it was already off.
+        if (status === 'denied' || status === 'restricted') screenPermissionHelp();
+        return;
+      }
+      const screens = sources.filter((s) => s.id.startsWith('screen:'));
+      const windows = sources.filter((s) => s.id.startsWith('window:') && s.name && !/^Rail$/.test(s.name)).slice(0, 24);
+      if (!screens.length && !windows.length) { answer({}); screenPermissionHelp(); return; }
+      const pick = (s: Electron.DesktopCapturerSource) => answer({ video: s });
+      const menu = Menu.buildFromTemplate([
+        { label: 'Share your screen', enabled: false },
+        ...screens.map((s, i) => ({ label: screens.length > 1 ? `🖥  Screen ${i + 1}` : '🖥  Entire screen', click: () => pick(s) })),
+        ...(windows.length ? [{ type: 'separator' as const }, { label: 'Or one window', enabled: false }] : []),
+        ...windows.map((s) => ({ label: `▢  ${s.name.length > 48 ? s.name.slice(0, 47) + '…' : s.name}`, click: () => pick(s) })),
+        { type: 'separator' },
+        { label: 'Cancel', click: () => answer({}) },
+      ]);
+      menu.popup({ window: win, callback: () => setTimeout(() => answer({}), 250) });
+    })();
+  });
+}
+
+let permissionHelpShown = 0;
+function screenPermissionHelp() {
+  if (Date.now() - permissionHelpShown < 4000) return;
+  permissionHelpShown = Date.now();
+  void dialog.showMessageBox({
+    type: 'info',
+    message: 'Rail needs Screen Recording permission',
+    detail:
+      'To share your screen in a huddle or record a clip, turn on Rail in System Settings → Privacy & Security → Screen & System Audio Recording, then quit and reopen Rail.\n\n' +
+      'If Rail is already on there, turn it off and on again: each new build of Rail needs it re-approved.',
+    buttons: ['Open System Settings', 'Not now'],
+    defaultId: 0,
+  }).then(({ response }) => {
+    if (response === 0) void shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture');
+  });
 }
 
 if (!app.requestSingleInstanceLock()) {

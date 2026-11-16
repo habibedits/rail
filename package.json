@@ -45,8 +45,8 @@
       "category": "public.app-category.productivity",
       "identity": "-",
       "extendInfo": {
-        "NSMicrophoneUsageDescription": "Claude voice input, and Notion meeting transcription when you start it from Rail.",
-        "NSCameraUsageDescription": "Used only if a pane asks for the camera."
+        "NSMicrophoneUsageDescription": "Claude voice input, Slack huddles and clips, and Notion meeting transcription when you start it from Rail.",
+        "NSCameraUsageDescription": "Your camera in Slack huddles and clips, only when you turn it on."
       },
       "hardenedRuntime": false
     },

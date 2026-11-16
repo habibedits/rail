@@ -42,6 +42,28 @@ html[data-rail~="narrow"] [data-qa="top-nav-help-button"] { display: none !impor
 .c-message-actions--hover-actions > *:not(:has([data-qa="more_message_actions"])) { display: none !important; }
 .c-message_actions__container .c-message-actions--hover-actions { padding: 1px !important; }
 
+/* Huddles and calls: Slack floats its call window (at least 455px wide) over
+   the bottom-left corner, which in Rail spills off the pane and covers the
+   messages. Dock it as a card across the bottom instead, and shrink the client
+   above it by the card's height (--rail-huddle-h, measured live) so nothing
+   is hidden underneath. Video and screen shares get a bigger card. */
+html[data-rail~="narrow"] .p-huddle_workspace {
+  left: 6px !important; right: 6px !important; bottom: 6px !important; top: auto !important;
+  width: auto !important; height: auto !important; transform: none !important;
+}
+html[data-rail~="narrow"] .p-huddle_workspace .p-huddle_window {
+  min-width: 0 !important; min-height: 0 !important; width: 100% !important; height: auto !important;
+  max-height: 52vh !important; border-radius: 12px !important; overflow: hidden !important;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.08), 0 8px 28px rgba(0,0,0,.28) !important;
+}
+html[data-rail~="narrow"] .p-huddle_workspace .p-huddle_window:has(video, .p-huddle_screenshare_tile, .p-huddle_av_video_pane) {
+  height: min(48vh, 420px) !important;
+}
+html[data-rail~="narrow"] .p-huddle_workspace .p-huddle_window_titlebar { app-region: no-drag !important; -webkit-app-region: no-drag !important; }
+html[data-rail~="narrow"] .p-huddle_workspace .p-huddle_window_resize_button { display: none !important; }
+html[data-rail~="narrow"] .p-huddle_workspace .p-huddle_window_content { min-width: 0 !important; }
+html[data-rail~="huddle"] .p-client_workspace__layout { padding-bottom: calc(var(--rail-huddle-h, 0px) + 12px) !important; box-sizing: border-box !important; }
+
 #rail-slack-back {
   -webkit-app-region: no-drag;
   display: none; position: fixed; z-index: 9999; left: 8px; top: 7px;
@@ -59,7 +81,8 @@ export function installSlackCompact() {
   
   // Slack rewrites <html class>, so Rail's state lives in its own attribute,
   // re-applied if anything removes it.
-  const want = () => (window.innerWidth <= NARROW ? `narrow ${mode}` : '');
+  let huddleH = 0;
+  const want = () => (window.innerWidth <= NARROW ? `narrow ${mode}${huddleH ? ' huddle' : ''}` : '');
   const apply = () => {
     const root = document.documentElement;
     if (root && root.getAttribute('data-rail') !== want()) root.setAttribute('data-rail', want());
@@ -128,6 +151,27 @@ export function installSlackCompact() {
     },
     true,
   );
+
+  // Measure the docked call card so the client above it can make room.
+  let card: Element | null = null;
+  const ro = new ResizeObserver(() => syncHuddle());
+  const syncHuddle = () => {
+    const h = card && card.isConnected && window.innerWidth <= NARROW ? Math.ceil(card.getBoundingClientRect().height) : 0;
+    if (h === huddleH) return;
+    huddleH = h;
+    document.documentElement.style.setProperty('--rail-huddle-h', `${h}px`);
+    apply();
+  };
+  const trackHuddle = () => {
+    const el = document.querySelector('.p-huddle_workspace .p-huddle_window, .p-huddle_workspace .p-huddle_mini_panel');
+    if (el !== card) {
+      if (card) ro.unobserve(card);
+      card = el;
+      if (el) ro.observe(el);
+    }
+    syncHuddle();
+  };
+  setInterval(trackHuddle, 500);
 
   window.addEventListener('resize', apply);
   document.addEventListener('DOMContentLoaded', mount);
