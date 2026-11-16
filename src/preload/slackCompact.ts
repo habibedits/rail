@@ -36,6 +36,12 @@ html[data-rail~="narrow"] [class*="sparkleWrapper"]:has([data-qa="slackbot-ai-bu
 html[data-rail~="narrow"] [data-qa="ai-apps-menu-container"],
 html[data-rail~="narrow"] [data-qa="top-nav-help-button"] { display: none !important; }
 
+/* Hovering a message: no quick reactions or action buttons covering the text,
+   just Slack's own ⋮ (More actions) at the right edge. Reacting (R) and
+   replying (T) still work from the keyboard while a message is hovered. */
+.c-message-actions--hover-actions > *:not(:has([data-qa="more_message_actions"])) { display: none !important; }
+.c-message_actions__container .c-message-actions--hover-actions { padding: 1px !important; }
+
 #rail-slack-back {
   -webkit-app-region: no-drag;
   display: none; position: fixed; z-index: 9999; left: 8px; top: 7px;

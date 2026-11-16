@@ -78,7 +78,7 @@ When Claude Code is minimized, you can't see what your agents are doing. The Age
 
 ## 💬 Slack and ✳️ Claude
 
-Both are the real sites, signed in once and kept open. Slack in Rail is **silent**: no notifications and no alert sounds (huddles and clips you click still play). The unread count shows only on the Slack dot.
+Both are the real sites, signed in once and kept open. Slack in Rail is **silent**: no notifications and no alert sounds (huddles and clips you click still play). The unread count shows only on the Slack dot. Hovering a message shows only Slack's ⋮ menu, not the row of reactions and buttons; press **R** to react or **T** to reply while hovering.
 
 ---
 
