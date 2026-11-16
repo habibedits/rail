@@ -526,3 +526,8 @@ export function installSlackSwitcher(bridge: SwitcherBridge) {
     if (open && host && !e.composedPath().includes(host)) setTimeout(() => { if (open && !root?.activeElement) (root?.querySelector('.qin') as HTMLInputElement | null)?.focus(); }, 0);
   }, true);
 }
+
+// For the README images (docs/design): the card's real styles and icons.
+export const SWITCHER_CSS = CSS;
+export const SWITCHER_LIGHT = LIGHT;
+export const SWITCHER_ICON = ICON;

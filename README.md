@@ -82,6 +82,8 @@ Both are the real sites, signed in once and kept open. Slack in Rail is **silent
 
 ### ⚡ Slack quick switcher
 
+<img src="docs/images/switcher.png" alt="The Slack quick switcher: recent chats with unread counts and a quick reply line, and search results for a name" width="100%">
+
 Press **Shift+Space** in Slack (anywhere except a message you've started typing) for a card over the chat, like a new tab in Arc:
 
 - **Your three most recent DMs and group DMs**, with **unread counts**. `Enter` or `1`–`3` opens one, with no scrolling.
@@ -186,7 +188,7 @@ npx vite --config docs/design/vite.config.mts
 In a second terminal:
 
 ```bash
-TZ=America/New_York DESIGN_WAIT=6000 npx electron docs/design/render.cjs docs/images hero=shots/hero.html@1600x900 spaces=shots/spaces.html@2300x980 calendar=shots/calendar.html@1600x1000 meetings=shots/meetings.html@1600x1000 focus=shots/focus.html@1600x1000 notion=shots/notion.html@1600x1000 wheel=shots/wheel.html@1600x1000
+TZ=America/New_York DESIGN_WAIT=6000 npx electron docs/design/render.cjs docs/images hero=shots/hero.html@1600x900 spaces=shots/spaces.html@2300x980 calendar=shots/calendar.html@1600x1000 meetings=shots/meetings.html@1600x1000 focus=shots/focus.html@1600x1000 notion=shots/notion.html@1600x1000 wheel=shots/wheel.html@1600x1000 switcher=shots/switcher.html@1600x1000
 ```
 
 Open `http://127.0.0.1:5181/panel.html?space=calendar` (or `meetings`, `agents`, `focus`, `notion`, `slack`, `claude`) to see a single panel.

@@ -3,8 +3,10 @@
 //   calendar: &edit=1 opens the Edit form
 //   meetings: &open=1 opens the first meeting, &live=1 shows a live call
 //   focus:    &game=chess shows chess instead of Sudoku, &scroll=N scrolls down
+//   slack:    &switcher=1 shows the Shift+Space quick switcher, &switcher=2 with a search typed
 import { SPACE } from './mock';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { SWITCHER_CSS, SWITCHER_LIGHT, SWITCHER_ICON as IC } from '../../src/preload/slackSwitcher';
 import { createRoot } from 'react-dom/client';
 import '../../src/renderer/styles.css';
 import './panel.css';
@@ -106,6 +108,51 @@ function Slack() {
   );
 }
 
+// The Shift+Space quick switcher, drawn with its real styles (it lives in
+// Slack's page in Rail, so it isn't a React component).
+function Switcher({ mode }: { mode: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const host = ref.current;
+    if (!host || host.shadowRoot) return;
+    const root = host.attachShadow({ mode: 'open' });
+    const av = (txt: string, bg: string, fg = '#fff') => `<div class="av" style="background:${bg};color:${fg}">${txt}</div>`;
+    const row = (on: boolean, a: string, name: string, sub: string, right: string, bold = false) =>
+      `<div class="row ${on ? 'on' : ''}">${a}<div class="txt"><div class="nm ${bold ? 'bold' : ''}">${name}</div>${sub ? `<div class="sub">${sub}</div>` : ''}</div>${right}</div>`;
+    const reply = (who: string, val: string) =>
+      `<div class="reply"><input class="rin" placeholder="Reply to ${who}…" value="${val}"><button class="send" ${val ? '' : 'disabled'}>Send</button></div>`;
+    let body = '';
+    let q = '';
+    let foot = '<span>↑↓ move</span><span>↵ open</span><span>1–3 jump</span><span>tab reply</span><span>esc close</span>';
+    if (mode === '2') {
+      q = 'pri';
+      body += '<div class="sec">People</div>';
+      body += row(true, av('PN', '#16a34a'), '<mark>Pri</mark>ya Natarajan', 'Direct message', '<span class="k">↵</span>');
+      body += reply('Priya', '');
+      body += row(false, av('PO', '#0891b2'), '<mark>Pri</mark>ce Okafor', 'Direct message', '');
+      body += '<div class="sec">Channels</div>';
+      body += row(false, '<div class="av ch">#</div>', '<mark>pri</mark>cing-page', '', '');
+      body += row(false, '<div class="av ch">🔒</div>', 'q1-<mark>pri</mark>orities', '', '');
+      body += `<div class="sec">Messages</div>` + row(false, `<div class="av">${IC.search}</div>`, 'Search Slack for “pri”', '', '<span class="k">⌘↵</span>');
+      foot = '<span>↑↓ move</span><span>↵ open</span><span>tab reply</span><span>⌘↵ search</span><span>esc close</span>';
+    } else {
+      body += '<div class="sec">Recent</div>';
+      body += row(true, av('MC', '#ea580c'), 'Maya Chen', 'Can you look at the Brightline deck before 3?', '<span class="badge">2</span>', true);
+      body += reply('Maya', 'On it, sending notes by 2:30');
+      body += row(false, av('TA', '#2563eb'), 'Theo Alvarez', 'New empty state is up in Figma 👀', '<span class="dot"></span>', true);
+      body += row(false, av('LP', '#9333ea'), 'Lena, Priya', 'You: shipping the 4-step version', '<span class="k">3</span>');
+      body += `<div class="sec">Quick actions</div><div class="chips">
+        <button class="chip">${IC.at}Mentions</button><button class="chip">${IC.unread}Unreads</button>
+        <button class="chip">${IC.threads}Threads</button><button class="chip">${IC.compose}New message</button></div>`;
+    }
+    host.setAttribute('style', SWITCHER_LIGHT);
+    root.innerHTML = `<style>${SWITCHER_CSS} .dim{position:absolute;animation:none} .card{animation:none}</style>
+      <div class="dim"><div class="card"><div class="q">${IC.search}<input class="qin" placeholder="Jump to a person or channel…" value="${q}"></div>
+      <div class="body">${body}</div><div class="foot">${foot}</div></div></div>`;
+  }, [mode]);
+  return <div ref={ref} className="panel-switcher" />;
+}
+
 function Body() {
   useEffect(() => {
     const click = (sel: string, text?: string, delay = 400) => setTimeout(() => {
@@ -135,7 +182,7 @@ function Body() {
   switch (SPACE) {
     case 'claude': return <Claude />;
     case 'notion': return <div className="fk-col"><div className="fk-divider"><Divider /></div><NotionPage /></div>;
-    case 'slack': return <Slack />;
+    case 'slack': return q.get('switcher') ? <div className="fk-stack"><Slack /><Switcher mode={q.get('switcher')!} /></div> : <Slack />;
     case 'meetings': return <Meetings />;
     case 'focus': return <Focus />;
     case 'agents': return <Agents />;
