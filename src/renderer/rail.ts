@@ -147,6 +147,7 @@ export interface CalInfo {
 
 export interface CalSnapshot {
   connected: boolean;
+  day?: number; // midnight of the day shown (older builds: today)
   events: CalEvent[];
   calendars: CalInfo[];
   error: { message: string; needsSignIn: boolean } | null;
@@ -155,6 +156,7 @@ export interface CalSnapshot {
 export type CalReq =
   | { op: 'get' }
   | { op: 'refresh' }
+  | { op: 'day'; day: number } // show another day (any time on it); today's date goes back to today
   | { op: 'connect' }
   | { op: 'disconnect' }
   | { op: 'toggle'; key: string }

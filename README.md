@@ -31,7 +31,8 @@ Press `⌃` `` ` `` anywhere to slide it in or out. Swipe with two fingers on th
 <img src="docs/images/calendar.png" alt="The Calendar space with an event open and the Edit form" width="100%">
 
 - **Every account in one day.** Work and personal calendars from Notion Calendar show side by side, a color per calendar. The `3 of 4 ▾` menu picks which ones show.
-- **Move things fast.** Drag an event to move it (it snaps to 15 minutes). Double-click an empty slot, or press **+**, to add one.
+- **Any day.** Click the date for a month view and pick a day; **Today** brings you back.
+- **Move things fast.** Drag an event to move it (it snaps to 15 minutes). **Drag across empty time** to draw a new event, or double-click a slot, or press **+**.
 - **Edit** an event's name, date and time on its card. If other people are invited, Rail asks first, because they'll get an update.
 - **Click an event** to read its description and location, RSVP, open its Notion meeting note, or **Join & transcribe** the call.
 - **A nudge** 5 minutes before each meeting. The Calendar dot counts down (`12m`, `now`).

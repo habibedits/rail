@@ -2,8 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { cal, CalEvent, CalReq, CalSnapshot, useRailState } from './rail';
 import { Reload } from './icons';
 
-// Space 4: today only, one time zone (this Mac's), every calendar connected in
-// Notion Calendar (PRD §6.6). Drag an event to move it; + adds one.
+// Calendar space: one day at a time (today unless you pick another from the
+// month under the date), one time zone (this Mac's), every calendar connected
+// in Notion Calendar (PRD §6.6). Drag an event to move it; drag across empty
+// time, double-click, or + to add one.
 
 const HOUR_PX = 52;
 const fmtTime = (ms: number) => new Date(ms).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
@@ -81,7 +83,10 @@ function Today({ snap, busy, error, run }: { snap: CalSnapshot; busy: string; er
   const [note, setNote] = useState('');
   useEffect(() => { if (!note) return; const t = setTimeout(() => setNote(''), 5000); return () => clearTimeout(t); }, [note]);
   const [picker, setPicker] = useState(false);
+  const [monthOpen, setMonthOpen] = useState(false);
   const [adding, setAdding] = useState<number | null>(null); // start time of the new event
+  const [addEnd, setAddEnd] = useState<number | null>(null); // its end, when you dragged it out
+  const [sweep, setSweep] = useState<{ start: number; end: number } | null>(null); // the block being dragged out
   const [drag, setDrag] = useState<{ id: string; dy: number } | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const scrolled = useRef(false);
@@ -98,15 +103,19 @@ function Today({ snap, busy, error, run }: { snap: CalSnapshot; busy: string; er
     return m;
   }, [snap.calendars]);
 
+  const todayMs = new Date(now).setHours(0, 0, 0, 0);
+  const dayMs = snap.day ?? todayMs;
+  const isToday = dayMs === todayMs;
+  const dayStart = new Date(dayMs);
+
   const { events } = snap;
   const allDay = events.filter((e) => e.allDay);
   const timed = events.filter((e) => !e.allDay);
   const live = timed.filter((e) => e.response !== 'declined');
-  const current = live.find((e) => e.start <= now && now < e.end);
-  const next = live.find((e) => e.start > now);
+  const current = isToday ? live.find((e) => e.start <= now && now < e.end) : undefined;
+  const next = isToday ? live.find((e) => e.start > now) : undefined;
   const focus = (selected && timed.find((e) => e.id === selected)) || current || next || null;
 
-  const dayStart = new Date(now); dayStart.setHours(0, 0, 0, 0);
   const startHour = 0, endHour = 24; // midnight to midnight
   const y = (ms: number) => ((ms - dayStart.getTime()) / 3600000 - startHour) * HOUR_PX;
   const timeAt = (px: number) => dayStart.getTime() + (px / HOUR_PX + startHour) * 3600000;
@@ -114,12 +123,53 @@ function Today({ snap, busy, error, run }: { snap: CalSnapshot; busy: string; er
 
   const placed = useMemo(() => layoutColumns(timed), [timed]);
 
+  // A new day: forget the open card and scroll to where its day starts.
+  useEffect(() => {
+    scrolled.current = false;
+    setSelected(null);
+    setEditing(null);
+  }, [dayMs]);
   useEffect(() => {
     if (scrolled.current || !scroller.current) return;
     scrolled.current = true;
-    const target = now > dayStart.getTime() + startHour * 3600000 ? y(now) : timed[0] ? y(timed[0].start) : 0;
+    const target = isToday ? y(now) : timed[0] ? y(timed[0].start) : y(dayMs + 8 * 3600000);
     scroller.current.scrollTop = Math.max(0, target - 90);
   });
+
+  // Drag across empty time to draw a new event (15-minute steps), then name it.
+  const startSweep = (down: React.PointerEvent<HTMLDivElement>) => {
+    if (down.button !== 0 || (down.target as Element).closest('.cal-ev')) return;
+    const grid = down.currentTarget;
+    const timeAtY = (cy: number) => timeAt(cy - grid.getBoundingClientRect().top);
+    const anchor = Math.floor(timeAtY(down.clientY) / SNAP) * SNAP;
+    const y0 = down.clientY;
+    let moved = false;
+    let block: { start: number; end: number } | null = null;
+    const onMove = (m: PointerEvent) => {
+      if (!moved && Math.abs(m.clientY - y0) < 6) return;
+      moved = true;
+      // Keep scrolling when you drag past the top or bottom of the grid.
+      const box = scroller.current?.getBoundingClientRect();
+      if (box && m.clientY > box.bottom - 24) scroller.current!.scrollBy(0, 14);
+      if (box && m.clientY < box.top + 24) scroller.current!.scrollBy(0, -14);
+      const t = timeAtY(m.clientY);
+      const lo = dayMs, hi = dayMs + 24 * 3600000;
+      block = t >= anchor
+        ? { start: anchor, end: Math.min(hi, Math.max(anchor + SNAP, Math.ceil(t / SNAP) * SNAP)) }
+        : { start: Math.max(lo, Math.floor(t / SNAP) * SNAP), end: anchor + SNAP };
+      setSweep(block);
+    };
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      if (!moved || !block) { setSweep(null); return; }
+      setAdding(block.start);
+      setAddEnd(block.end);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  };
+  const closeAdd = () => { setAdding(null); setAddEnd(null); setSweep(null); };
 
   // Drag an event up or down to move it, in 15-minute steps.
   const startDrag = (e: CalEvent, down: React.PointerEvent) => {
@@ -150,30 +200,33 @@ function Today({ snap, busy, error, run }: { snap: CalSnapshot; busy: string; er
     window.addEventListener('pointerup', onUp);
   };
 
-  const day = new Date(now).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+  const day = new Date(dayMs).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', ...(new Date(dayMs).getFullYear() !== new Date(now).getFullYear() ? { year: 'numeric' } : {}) });
   const onCount = snap.calendars.filter((c) => c.on).length;
-  const nextSlot = () => Math.ceil(now / (30 * 60000)) * 30 * 60000;
+  const nextSlot = () => (isToday ? Math.ceil(now / (30 * 60000)) * 30 * 60000 : dayMs + 9 * 3600000);
+  const pickDay = (d: number) => { setMonthOpen(false); void run('day', { op: 'day', day: d }); };
 
   return (
     <div className="cal">
       <div className="cal-head">
-        <div>
-          <div className="cal-day">{day}</div>
+        <button className={`cal-daybtn ${monthOpen ? 'open' : ''}`} onClick={() => setMonthOpen(!monthOpen)} title="Pick a day">
+          <div className="cal-day">{day} <span className="caret">▾</span></div>
           <div className="cal-tz">{zoneLabel()}</div>
-        </div>
+        </button>
+        {!isToday && <button className="btn small ghost cal-today" disabled={busy === 'day'} onClick={() => pickDay(now)}>Today</button>}
         <div className="spacer" />
         <button className={`cal-pick ${picker ? 'open' : ''}`} onClick={() => setPicker(!picker)} title="Choose calendars">
           <span className="dots3">{snap.calendars.filter((c) => c.on).slice(0, 4).map((c) => <i key={c.key} style={{ background: color.get(c.key) }} />)}</span>
           {onCount} of {snap.calendars.length} ▾
         </button>
-        <button className="icon" title="Add event" onClick={() => setAdding(adding ? null : nextSlot())}><span className="plus">+</span></button>
+        <button className="icon" title="Add event" onClick={() => { setAddEnd(null); setSweep(null); setAdding(adding !== null ? null : nextSlot()); }}><span className="plus">+</span></button>
         <button className="icon" title="Refresh" disabled={!!busy} onClick={() => run('refresh', { op: 'refresh' })}>
           <span className={busy && busy !== 'load' ? 'spin' : ''}><Reload /></span>
         </button>
         {picker && <Picker snap={snap} color={color} run={run} onClose={() => setPicker(false)} />}
+        {monthOpen && <Month day={dayMs} today={todayMs} onPick={pickDay} onClose={() => setMonthOpen(false)} />}
       </div>
 
-      {adding !== null && <AddForm snap={snap} start={adding} run={run} onClose={() => setAdding(null)} />}
+      {adding !== null && <AddForm snap={snap} start={adding} end={addEnd} run={run} onClose={closeAdd} />}
 
       {error && <p className="error pad">{error}</p>}
       {note && <div className="cal-warn">{note}</div>}
@@ -189,10 +242,10 @@ function Today({ snap, busy, error, run }: { snap: CalSnapshot; busy: string; er
           <div className="cal-when">
             {focus === current ? <><span className="live-dot" /> Now · ends {until(focus.end, now)}</>
               : focus.start > now ? `Up next · ${until(focus.start, now)}`
-                : 'Earlier today'}
+                : isToday ? 'Earlier today' : new Date(focus.start).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
           </div>
           {editing === focus.id ? (
-            <EditForm e={focus} run={run} onClose={() => setEditing(null)} onMoved={(msg) => { setEditing(null); setNote(msg); }} />
+            <EditForm e={focus} day={dayMs} run={run} onClose={() => setEditing(null)} onMoved={(msg) => { setEditing(null); setNote(msg); }} />
           ) : (<>
           <div className="cal-title">{focus.title}</div>
           <div className="cal-meta">
@@ -237,9 +290,11 @@ function Today({ snap, busy, error, run }: { snap: CalSnapshot; busy: string; er
           </div>
           </>)}
         </div>
-      ) : (
+      ) : isToday ? (
         <div className="cal-focus"><div className="cal-when">{timed.length ? 'No more meetings today' : 'Nothing on the calendar today'}</div></div>
-      )}
+      ) : !timed.length && busy !== 'day' ? (
+        <div className="cal-focus"><div className="cal-when">Nothing on the calendar this day</div></div>
+      ) : null}
 
       {allDay.length > 0 && (
         <div className="cal-allday">
@@ -253,9 +308,12 @@ function Today({ snap, busy, error, run }: { snap: CalSnapshot; busy: string; er
         <div
           className="cal-grid"
           style={{ height: (endHour - startHour) * HOUR_PX }}
+          onPointerDown={startSweep}
           onDoubleClick={(ev) => {
             if ((ev.target as Element).closest('.cal-ev')) return;
             const r = (ev.currentTarget as HTMLElement).getBoundingClientRect();
+            setAddEnd(null);
+            setSweep(null);
             setAdding(Math.floor(timeAt(ev.clientY - r.top) / (30 * 60000)) * 30 * 60000);
           }}
         >
@@ -288,12 +346,17 @@ function Today({ snap, busy, error, run }: { snap: CalSnapshot; busy: string; er
               </button>
             );
           })}
+          {sweep && (
+            <div className="cal-ghost" style={{ top: y(sweep.start), height: Math.max(14, y(sweep.end) - y(sweep.start) - 2) }}>
+              <span>{fmtTime(sweep.start)} – {fmtTime(sweep.end)}</span>
+            </div>
+          )}
           {now >= dayStart.getTime() + startHour * 3600000 && now < dayStart.getTime() + endHour * 3600000 && (
             <div className="cal-now" style={{ top: y(now) }} />
           )}
         </div>
         <div className="cal-foot">
-          <span className="muted small">Double-click an empty slot to add an event</span>
+          <span className="muted small">Drag across empty time (or double-click) to add an event</span>
           <button className="linkbtn muted" onClick={() => run('disconnect', { op: 'disconnect' })}>Disconnect Notion Calendar</button>
         </div>
       </div>
@@ -337,19 +400,73 @@ function Picker({ snap, color, run, onClose }: { snap: CalSnapshot; color: Map<s
   );
 }
 
+// The month under the date: click a day to show it. Today is ringed and the
+// day you're looking at is filled.
+function Month({ day, today, onPick, onClose }: { day: number; today: number; onPick: (d: number) => void; onClose: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [view, setView] = useState(() => { const d = new Date(day); return new Date(d.getFullYear(), d.getMonth(), 1); });
+  useEffect(() => {
+    const away = (e: PointerEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node) && !(e.target as Element).closest?.('.cal-daybtn')) onClose();
+    };
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('pointerdown', away);
+    window.addEventListener('keydown', esc);
+    return () => { window.removeEventListener('pointerdown', away); window.removeEventListener('keydown', esc); };
+  }, [onClose]);
+
+  const y = view.getFullYear(), m = view.getMonth();
+  const lead = view.getDay(); // weeks start on Sunday
+  const weeks = Math.ceil((lead + new Date(y, m + 1, 0).getDate()) / 7);
+  const cells = Array.from({ length: weeks * 7 }, (_, i) => new Date(y, m, 1 - lead + i));
+  const shift = (n: number) => setView(new Date(y, m + n, 1));
+
+  return (
+    <div className="cal-month" ref={ref}>
+      <div className="mh">
+        <button className="icon" title="Previous month" onClick={() => shift(-1)}>‹</button>
+        <span className="mt">{view.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
+        <button className="icon" title="Next month" onClick={() => shift(1)}>›</button>
+      </div>
+      <div className="mg">
+        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => <span key={i} className="wd">{d}</span>)}
+        {cells.map((d) => {
+          const t = d.getTime();
+          return (
+            <button
+              key={t}
+              className={`md ${d.getMonth() !== m ? 'out' : ''} ${t === today ? 'today' : ''} ${t === day ? 'sel' : ''}`}
+              onClick={() => onPick(t)}
+            >
+              {d.getDate()}
+            </button>
+          );
+        })}
+      </div>
+      <div className="mf">
+        <button className="btn small ghost" onClick={() => onPick(today)}>Today</button>
+      </div>
+    </div>
+  );
+}
+
 const toInput = (ms: number) => { const d = new Date(ms); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
 
-function AddForm({ snap, start, run, onClose }: { snap: CalSnapshot; start: number; run: Run; onClose: () => void }) {
+const fmtDur = (m: number) => (m < 60 ? `${m} min` : m % 60 ? `${Math.floor(m / 60)} hr ${m % 60} min` : `${m / 60} hr`);
+
+function AddForm({ snap, start, end, run, onClose }: { snap: CalSnapshot; start: number; end?: number | null; run: Run; onClose: () => void }) {
   const writable = snap.calendars.filter((c) => c.writable);
   let last = '';
   try { last = localStorage.getItem('rail.cal.lastAdd') ?? ''; } catch { /* storage unavailable */ }
   const preferred = writable.find((c) => c.key === last) ?? writable.find((c) => c.work && c.primary) ?? writable.find((c) => c.on && c.primary) ?? writable.find((c) => c.on) ?? writable[0];
   const [title, setTitle] = useState('');
   const [time, setTime] = useState(toInput(start));
-  const [mins, setMins] = useState(30);
+  const lengthOf = () => (end && end > start ? Math.round((end - start) / 60000) : 30);
+  const [mins, setMins] = useState(lengthOf);
   const [calKey, setCalKey] = useState(preferred?.key ?? '');
   const [saving, setSaving] = useState(false);
-  useEffect(() => setTime(toInput(start)), [start]);
+  useEffect(() => { setTime(toInput(start)); setMins(lengthOf()); }, [start, end]); // eslint-disable-line react-hooks/exhaustive-deps
+  const lengths = [...new Set([15, 30, 45, 60, 90, 120, mins])].sort((a, b) => a - b);
 
   const submit = async () => {
     if (!calKey) return;
@@ -368,7 +485,7 @@ function AddForm({ snap, start, run, onClose }: { snap: CalSnapshot; start: numb
       <div className="r">
         <input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
         <select value={mins} onChange={(e) => setMins(Number(e.target.value))}>
-          {[15, 30, 45, 60, 90, 120].map((m) => <option key={m} value={m}>{m < 60 ? `${m} min` : `${m / 60} hr`}</option>)}
+          {lengths.map((m) => <option key={m} value={m}>{fmtDur(m)}</option>)}
         </select>
       </div>
       <select value={calKey} onChange={(e) => setCalKey(e.target.value)}>
@@ -429,7 +546,7 @@ const toDate = (ms: number) => { const d = new Date(ms); return `${d.getFullYear
 const at = (date: string, time: string) => { const [y, mo, d] = date.split('-').map(Number); const [h, mi] = time.split(':').map(Number); return new Date(y, mo - 1, d, h, mi).getTime(); };
 
 // Edit an event's name, date and time from its card.
-function EditForm({ e, run, onClose, onMoved }: { e: CalEvent; run: Run; onClose: () => void; onMoved: (msg: string) => void }) {
+function EditForm({ e, day, run, onClose, onMoved }: { e: CalEvent; day: number; run: Run; onClose: () => void; onMoved: (msg: string) => void }) {
   const [title, setTitle] = useState(e.title);
   const [date, setDate] = useState(toDate(e.start));
   const [from, setFrom] = useState(toInput(e.start));
@@ -449,7 +566,7 @@ function EditForm({ e, run, onClose, onMoved }: { e: CalEvent; run: Run; onClose
     setSaving(true);
     await run('edit', { op: 'edit', id: e.id, title: title.trim(), start, end });
     setSaving(false);
-    const otherDay = toDate(start) !== toDate(Date.now());
+    const otherDay = toDate(start) !== toDate(day);
     if (otherDay) onMoved(`Moved “${title.trim()}” to ${new Date(start).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}`);
     else onClose();
   };

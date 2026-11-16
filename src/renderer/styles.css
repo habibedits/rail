@@ -574,3 +574,30 @@ body[data-view='wheel'] { background: transparent; }
 .wheel-hub-name { text-anchor: middle; font-size: 12.5px; font-weight: 650; fill: var(--fg); }
 .wheel-hub-hint { text-anchor: middle; font-size: 10px; fill: var(--muted); }
 .wheel-reticle { fill: var(--fg); stroke: var(--bg); stroke-width: 2; pointer-events: none; }
+
+/* ---- Calendar: pick a day, drag out a new event --------------------------- */
+.cal-daybtn { display: block; text-align: left; background: none; border: 0; border-radius: 7px; padding: 3px 6px; margin: -3px 0 -3px -6px; cursor: pointer; min-width: 0; }
+.cal-daybtn:hover, .cal-daybtn.open { background: var(--hover); }
+.cal-day .caret { font-size: 11px; color: var(--muted); vertical-align: 1px; margin-left: 1px; }
+.cal-today { margin-left: 2px; }
+.cal-month {
+  position: absolute; top: calc(100% - 2px); left: 8px; z-index: 30; width: 246px; padding: 8px 10px 8px;
+  background: var(--field); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
+}
+.cal-month .mh { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.cal-month .mh .icon { font-size: 16px; line-height: 1; width: 26px; height: 24px; }
+.cal-month .mt { font-weight: 650; font-size: 13px; }
+.cal-month .mg { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.cal-month .wd { text-align: center; font-size: 10.5px; color: var(--muted); padding: 2px 0 4px; }
+.cal-month .md { height: 28px; border: 0; border-radius: 7px; background: none; font-size: 12px; font-variant-numeric: tabular-nums; cursor: pointer; }
+.cal-month .md:hover { background: var(--hover); }
+.cal-month .md.out { color: var(--muted); opacity: 0.6; }
+.cal-month .md.today { box-shadow: inset 0 0 0 1.5px #e5484d; color: #e5484d; font-weight: 650; }
+.cal-month .md.sel { background: var(--fg); color: var(--bg); font-weight: 650; box-shadow: none; }
+.cal-month .mf { display: flex; justify-content: center; margin-top: 6px; }
+.cal-ghost {
+  position: absolute; left: 48px; right: 6px; z-index: 4; border-radius: 6px; pointer-events: none;
+  background: color-mix(in srgb, #3b82f6 22%, var(--bg)); border: 1.5px dashed #3b82f6; padding: 3px 7px;
+}
+.cal-ghost span { font-size: 11px; font-weight: 600; color: #1d4ed8; }
+@media (prefers-color-scheme: dark) { .cal-ghost span { color: #93c5fd; } }

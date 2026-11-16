@@ -113,6 +113,20 @@ function Body() {
       el?.click();
     }, delay);
     if (SPACE === 'calendar' && q.get('edit')) click('.cal-focus .btn', 'Edit', 600);
+    if (SPACE === 'calendar' && q.get('month')) click('.cal-daybtn', undefined, 600);
+    // &sweep=1 drags out 1:00–2:30 PM on the grid (and holds); &sweep=2 lets go, opening the add form
+    if (SPACE === 'calendar' && q.get('sweep')) setTimeout(() => {
+      const grid = document.querySelector<HTMLElement>('.cal-grid');
+      const sc = document.querySelector<HTMLElement>('.cal-scroll');
+      if (!grid || !sc) return;
+      sc.scrollTop = 12 * 52 - 120;
+      const yAt = (h: number) => grid.getBoundingClientRect().top + h * 52;
+      const x = grid.getBoundingClientRect().left + 200;
+      grid.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, clientX: x, clientY: yAt(13.05) }));
+      window.dispatchEvent(new PointerEvent('pointermove', { clientX: x, clientY: yAt(13.8) }));
+      window.dispatchEvent(new PointerEvent('pointermove', { clientX: x, clientY: yAt(14.45) }));
+      if (q.get('sweep') === '2') window.dispatchEvent(new PointerEvent('pointerup', { clientX: x, clientY: yAt(14.45) }));
+    }, 900);
     if (SPACE === 'meetings' && q.get('open')) click('.mhead', undefined, 500);
     if (SPACE === 'focus' && q.get('game') === 'chess') click('button, [role=tab], span, div', 'Chess puzzles', 500);
     const scroll = Number(q.get('scroll') ?? 0);

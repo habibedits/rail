@@ -144,12 +144,19 @@ const state = {
 (window as unknown as { rail: unknown }).rail = {
   send: () => {},
   onState: (cb: (s: unknown) => void) => { setTimeout(() => cb(state), 0); return () => {}; },
-  cal: (req: { op: string }) => ok({
+  cal: (req: { op: string; day?: number }) => {
+    // &day=N shows the day N days from today (the month picker's job in the app)
+    const pick = req.op === 'day' ? new Date(req.day!).setHours(0, 0, 0, 0) : day.getTime() + Number(params.get('day') ?? 0) * 86400000;
+    const shift = pick - day.getTime();
+    const list = (req.op === 'edit' ? events : [...allDay, ...events]).map((e) => ({ ...e, start: e.start + shift, end: e.end + shift }));
+    return ok({
     connected: true,
-    events: req.op === 'edit' ? events : [...allDay, ...events],
+    day: pick,
+    events: list,
     calendars: calendars.map((c) => ({ ...c, on: c.on })),
     error: null,
-  }),
+  });
+  },
   onCal: () => () => {},
   agents: () => ok({ connected: true, listening: true, error: null, sessions: agentSessions }),
   onAgents: () => () => {},

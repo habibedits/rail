@@ -268,8 +268,14 @@ function when(p: any): number {
   return NaN;
 }
 
-export async function todayEvents(): Promise<{ events: CalEvent[]; calendars: CalInfo[] }> {
-  const start = new Date(); start.setHours(0, 0, 0, 0);
+export function todayEvents() {
+  const d = new Date(); d.setHours(0, 0, 0, 0);
+  return dayEvents(d.getTime());
+}
+
+// One day's events (midnight to midnight, this Mac's time zone).
+export async function dayEvents(dayStart: number): Promise<{ events: CalEvent[]; calendars: CalInfo[] }> {
+  const start = new Date(dayStart); start.setHours(0, 0, 0, 0);
   const end = new Date(start); end.setDate(end.getDate() + 1);
   const data = await callTool('notion-calendar-list-events', {
     timeMin: start.toISOString(),

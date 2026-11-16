@@ -938,6 +938,10 @@ let calEvents: ncal.CalEvent[] = [];
 let calCalendars: ncal.CalInfo[] = [];
 let calError: { message: string; needsSignIn: boolean } | null = null;
 let calLoadedDay = '';
+// The day the Calendar space shows (0 = today). Today's events stay loaded
+// for nudges and the dot's countdown; another day's are kept apart.
+let calViewDay = 0;
+let calViewEvents: ncal.CalEvent[] = [];
 let calBadge: string | 0 = 0;
 const nudged = new Set<string>();
 const NUDGE_MIN = 5;
@@ -945,6 +949,19 @@ const NUDGE_MIN = 5;
 const dayKey = () => new Date().toDateString();
 const calOn = (key: string) => cfg.calendarsOn[key] ?? calCalendars.find((c) => c.key === key)?.defaultOn ?? true;
 const visibleEvents = () => calEvents.filter((e) => calOn(e.calendar));
+const todayStart = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); };
+const viewingOtherDay = () => calViewDay !== 0 && calViewDay !== todayStart();
+const anyCalEvent = (id: string) => calEvents.find((x) => x.id === id) ?? calViewEvents.find((x) => x.id === id);
+
+async function loadViewDay() {
+  if (!viewingOtherDay() || !ncal.isConnected()) { calViewDay = 0; calViewEvents = []; return; }
+  try {
+    calViewEvents = (await ncal.dayEvents(calViewDay)).events;
+  } catch (err) {
+    const c = err instanceof ncal.CalError ? err : null;
+    calError = { message: (err as Error).message, needsSignIn: c?.needsSignIn ?? false };
+  }
+}
 
 async function refreshCalendar() {
   if (!ncal.isConnected()) {
@@ -963,6 +980,7 @@ async function refreshCalendar() {
       calError = { message: (err as Error).message, needsSignIn: c?.needsSignIn ?? false };
     }
   }
+  await loadViewDay();
   updateCalBadge();
   calendar?.webContents.send('rail:cal', calSnapshot());
 }
@@ -970,7 +988,8 @@ async function refreshCalendar() {
 function calSnapshot() {
   return {
     connected: ncal.isConnected(),
-    events: visibleEvents(),
+    day: viewingOtherDay() ? calViewDay : todayStart(),
+    events: viewingOtherDay() ? calViewEvents.filter((e) => calOn(e.calendar)) : visibleEvents(),
     calendars: calCalendars.map((c) => ({ ...c, on: calOn(c.key) })),
     error: calError,
   };
@@ -1034,6 +1053,7 @@ function calendarTick() {
 
 type CalReq =
   | { op: 'get' }
+  | { op: 'day'; day: number }
   | { op: 'refresh' }
   | { op: 'connect' }
   | { op: 'disconnect' }
@@ -1106,6 +1126,16 @@ async function handleCal(req: CalReq): Promise<unknown> {
     case 'refresh':
       await refreshCalendar();
       return calSnapshot();
+    case 'day': {
+      const d = new Date(Number(req.day));
+      if (!isFinite(d.getTime())) throw new Error('That isn’t a date.');
+      d.setHours(0, 0, 0, 0);
+      calViewDay = d.getTime() === todayStart() ? 0 : d.getTime();
+      calViewEvents = [];
+      calError = null;
+      await loadViewDay();
+      return calSnapshot();
+    }
     case 'connect':
       await ncal.connect();
       app.focus({ steal: true });
@@ -1125,7 +1155,7 @@ async function handleCal(req: CalReq): Promise<unknown> {
       return calSnapshot();
     case 'move': {
       // Show the new time right away; the refresh confirms it.
-      const e = calEvents.find((x) => x.id === req.id);
+      const e = anyCalEvent(req.id);
       if (e) { e.start = req.start; e.end = req.end; }
       calendar.webContents.send('rail:cal', calSnapshot());
       try {
@@ -1136,8 +1166,8 @@ async function handleCal(req: CalReq): Promise<unknown> {
       return calSnapshot();
     }
     case 'edit': {
-      const e = calEvents.find((x) => x.id === req.id);
-      if (!e) throw new Error('That event isn’t on today’s calendar any more.');
+      const e = anyCalEvent(req.id);
+      if (!e) throw new Error('That event isn’t on this day’s calendar any more.');
       const title = String(req.title ?? '').trim();
       const start = Number(req.start), end = Number(req.end);
       if (!isFinite(start) || !isFinite(end) || end <= start) throw new Error('The end has to be after the start.');
@@ -1153,7 +1183,7 @@ async function handleCal(req: CalReq): Promise<unknown> {
       await refreshCalendar();
       return calSnapshot();
     case 'notes': {
-      const ev = calEvents.find((x) => x.id === req.id);
+      const ev = anyCalEvent(req.id);
       if (req.join && ev?.joinUrl) void shell.openExternal(ev.joinUrl);
       showNotionPage(await ncal.meetingNote(req.id));
       await openNoteParent();
@@ -1161,7 +1191,7 @@ async function handleCal(req: CalReq): Promise<unknown> {
       return calSnapshot();
     }
     case 'rsvp': {
-      const ev = calEvents.find((x) => x.id === req.id);
+      const ev = anyCalEvent(req.id);
       if (ev) ev.response = req.response;
       calendar.webContents.send('rail:cal', calSnapshot());
       try {
