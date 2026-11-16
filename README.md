@@ -80,6 +80,21 @@ When Claude Code is minimized, you can't see what your agents are doing. The Age
 
 Both are the real sites, signed in once and kept open. Slack in Rail is **silent**: no notifications and no alert sounds (huddles and clips you click still play). The unread count shows only on the Slack dot. Hovering a message shows only Slack's ⋮ menu, not the row of reactions and buttons; press **R** to react or **T** to reply while hovering.
 
+### ⚡ Slack quick switcher
+
+Press **Shift+Space** in Slack (anywhere except a message you've started typing) for a card over the chat, like a new tab in Arc:
+
+- **Your three most recent DMs and group DMs**, with **unread counts**. `Enter` or `1`–`3` opens one, with no scrolling.
+- **A reply line** for the selected chat: press `Tab`, type, press `Enter` to send without leaving where you are.
+- **Type a name** to find people (including people from other companies you DM) and channels. `⌘↵` runs Slack's full search instead.
+- **Mentions, Unreads, Threads and New message** buttons.
+- `↑` `↓` move, `Esc` closes.
+
+### Huddles, calls and screen sharing
+
+- In a huddle, Slack's call window docks as a card **across the bottom** of the pane, and the chat moves up above it instead of being covered. **Open in a new window** pops the call out into its own window.
+- **Screen sharing and clips:** pick a whole screen or one window from Rail's menu. macOS asks once for Screen Recording permission (System Settings → Privacy & Security → Screen & System Audio Recording); quit and reopen Rail after allowing it. Because Rail isn't signed with a developer certificate, **each rebuild needs that permission again**: remove Rail from that list with **–**, reopen Rail and allow it again.
+
 ---
 
 ## Install
@@ -127,6 +142,7 @@ Jump to any space without hunting for its dot, like a ping wheel in a game.
 | `⌃1` … `⌃7` | Jump to a space (while Rail has focus) |
 | `⌃⌥←` / `⌃⌥→`, or a two-finger swipe on the panel | Previous / next space |
 | Hold the middle mouse button, or hold `⌥` | Space wheel: nudge toward a space and let go |
+| `⇧Space` (in Slack) | Slack quick switcher: recent chats, quick reply, search |
 | Pin button (top strip) | Keep Rail above other windows |
 | Hide button (top strip) | Slide Rail away |
 
@@ -155,7 +171,7 @@ npm run dev
 - `src/main/agents.ts`: the Agents space. A local server for Claude Code hooks, session state, and installing or removing the hook.
 - `src/main/config.ts`: settings that aren't secret (`config.json` in Rail's userData).
 - `src/main/secrets.ts`: Keychain-encrypted secrets.
-- `src/preload/`: `web.ts` for the sites (swipe, Slack silencing), `shell.ts` for Rail's own UI (the `window.rail` bridge), `swipe.ts` for gesture detection.
+- `src/preload/`: `web.ts` for the sites (swipe, Slack silencing), `slackCompact.ts` and `slackSwitcher.ts` for Slack's narrow layout, huddle card and quick switcher, `shell.ts` for Rail's own UI (the `window.rail` bridge), `swipe.ts` for gesture detection.
 - `src/renderer/`: React UI for the top strip, the Notion bar, Meetings, Calendar and Focus.
 - `docs/design/`: how the images in this README are made (see below).
 

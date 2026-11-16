@@ -76,7 +76,7 @@ html[data-rail~="huddle"] .p-client_workspace__layout { padding-bottom: calc(var
 html[data-rail~="chat"] #rail-slack-back { display: inline-flex; }
 `;
 
-export function installSlackCompact() {
+export function installSlackCompact(): (m: 'list' | 'chat') => void {
   let mode: 'list' | 'chat' = 'chat';
   
   // Slack rewrites <html class>, so Rail's state lives in its own attribute,
@@ -178,4 +178,5 @@ export function installSlackCompact() {
   window.addEventListener('load', mount);
   setInterval(mount, 1000);
   mount();
+  return (m) => { if (window.innerWidth <= NARROW) set(m); };
 }

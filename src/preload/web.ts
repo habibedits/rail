@@ -6,12 +6,20 @@ import { installSwipe } from './swipe';
 import { installNotionCompact } from './notionCompact';
 import { installSlackCompact } from './slackCompact';
 import { installWheelTrigger } from './wheel';
+import { installSlackSwitcher } from './slackSwitcher';
 
 installSwipe((dir) => ipcRenderer.send('rail:swipe', dir));
 installWheelTrigger((sig) => ipcRenderer.send('rail:wheel', sig));
 
 if (/(^|\.)notion\.(so|com)$/.test(location.hostname) && location.hostname !== 'calendar.notion.so') installNotionCompact();
-if (location.hostname === 'app.slack.com') installSlackCompact();
+if (location.hostname === 'app.slack.com') {
+  const setMode = installSlackCompact();
+  installSlackSwitcher({
+    jump: (query, id) => ipcRenderer.invoke('rail:slack-jump', { query, id }),
+    action: (a) => ipcRenderer.send('rail:slack-action', a),
+    onOpened: (kind) => setMode(kind),
+  });
+}
 
 // Slack is silent in Rail (user preference): no notifications and no alert
 // sounds. Runs in the page, before Slack's own scripts.

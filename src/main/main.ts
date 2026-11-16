@@ -163,6 +163,15 @@ function createSiteView(partition: string, url: string, ownHosts: string[], inPa
     wc.on('did-finish-load', () => console.log(tag, 'loaded', wc.getURL()));
   }
   wc.loadURL(url);
+  // Right after a relaunch a site's first load can hang before it starts (seen
+  // with Slack, whose page then stays blank). Start it again if nothing came.
+  let kicks = 0;
+  const watchdog = () => {
+    if (wc.isDestroyed()) return;
+    const u = wc.getURL();
+    if ((!u || u === 'about:blank') && kicks++ < 3) { wc.loadURL(url); setTimeout(watchdog, 12000); }
+  };
+  setTimeout(watchdog, 12000);
   return view;
 }
 
@@ -1637,6 +1646,44 @@ function allowScreenShare(ses: Electron.Session) {
   });
 }
 
+function pressKey(wc: WebContents, keyCode: string, modifiers: string[] = []) {
+  const m = modifiers as Electron.KeyboardInputEvent['modifiers'];
+  wc.sendInputEvent({ type: 'keyDown', keyCode, modifiers: m });
+  wc.sendInputEvent({ type: 'keyUp', keyCode, modifiers: m });
+}
+const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// Open a Slack conversation through Slack's ⌘K switcher: type the name, wait
+// for the results to settle, arrow down to the one with this id, press Enter.
+// With no id, run Slack's search for the text instead.
+async function slackJump(query: string, id: string) {
+  const wc = slack?.webContents;
+  if (!wc || !query) return false;
+  wc.focus();
+  pressKey(wc, 'K', ['meta']);
+  await pause(250);
+  wc.insertText(query);
+  if (!id) { await pause(500); pressKey(wc, 'Return'); return true; }
+  const opts = `[...document.querySelectorAll('.c-search_autocomplete [role=option]')]`;
+  let last = '';
+  let steady = 0;
+  for (let i = 0; i < 30; i++) {
+    await pause(120);
+    const sig: string = await wc.executeJavaScript(`${opts}.map(o => o.dataset.id || '').join(',')`).catch(() => '');
+    steady = sig && sig === last ? steady + 1 : 0;
+    last = sig;
+    if (steady >= 2 && sig.split(',').includes(id)) break;
+  }
+  if (!last.split(',').includes(id)) return false; // leave Slack's results open to pick from
+  for (let i = 0; i < 16; i++) {
+    const cur: string = await wc.executeJavaScript(`(${opts}.find(o => o.getAttribute('aria-selected') === 'true')?.dataset.id) || ''`).catch(() => '');
+    if (cur === id) { pressKey(wc, 'Return'); return true; }
+    pressKey(wc, 'Down');
+    await pause(50);
+  }
+  return false;
+}
+
 let permissionHelpShown = 0;
 function screenPermissionHelp() {
   if (Date.now() - permissionHelpShown < 4000) return;
@@ -1719,6 +1766,24 @@ if (!app.requestSingleInstanceLock()) {
         return { ok: false, error: (err as Error).message, auth: fe?.auth ?? false };
       }
     });
+    // Slack quick switcher (src/preload/slackSwitcher.ts): open a conversation
+    // or a Slack view with real keypresses in Slack's own ⌘K switcher.
+    ipcMain.handle('rail:slack-jump', (e, req: { query: string; id: string }) => {
+      if (!slack || e.sender !== slack.webContents) return false;
+      return slackJump(String(req?.query ?? '').slice(0, 120), String(req?.id ?? '').slice(0, 40));
+    });
+    ipcMain.on('rail:slack-action', (e, a: string) => {
+      if (!slack || e.sender !== slack.webContents) return;
+      const keys: Record<string, [string, string[]]> = {
+        activity: ['M', ['meta', 'shift']],
+        unreads: ['A', ['meta', 'shift']],
+        threads: ['T', ['meta', 'shift']],
+        compose: ['N', ['meta']],
+      };
+      const k = keys[a];
+      if (k) { slack.webContents.focus(); pressKey(slack.webContents, k[0], k[1]); }
+    });
+
     ipcMain.on('rail:wheel', (_e, sig: string) => {
       if (sig === 'down') { if (wheel) wheelClick(); else openWheel('mouse'); }
       else if (sig === 'up') { if (wheel?.via === 'mouse') wheelRelease(); }
