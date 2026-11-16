@@ -8,7 +8,7 @@
   .ghost .lights { position: absolute; top: 16px; left: 18px; display: flex; gap: 7px; }
   .ghost .lights i { width: 11px; height: 11px; border-radius: 50%; background: #e3e2de; }
   .dock { position: absolute; right: 26px; top: 46px; transform: scale(.94); transform-origin: top right; }
-  .spaces { display: grid; grid-template-columns: repeat(3, auto); gap: 10px 10px; margin-top: 34px; justify-content: start; }
+  .spaces { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 34px; max-width: 540px; }
   .sp { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px 7px 10px; border-radius: 8px; font-size: 15px; }
   .sp .kbd { margin-left: 4px; }
   .edge { position: absolute; right: 8px; top: 0; bottom: 0; width: 3px; background: linear-gradient(transparent, rgba(51,126,169,.35), transparent); border-radius: 2px; }
@@ -17,14 +17,15 @@
   <div>
     <span class="eyebrow"><span class="pill">🛤️ macOS side panel</span></span>
     <h1 class="title">Rail</h1>
-    <p class="lede">Your workday, docked to the edge of your screen. <b>Claude, Notion, meetings, Slack, your calendar and a focus timer</b> in one slim panel that's always a swipe away.</p>
+    <p class="lede">Your workday, docked to the edge of your screen. <b>Claude, Notion, meetings, Slack, your calendar, your coding agents and a focus timer</b> in one slim panel that's always a swipe away.</p>
     <div class="spaces">
       <span class="sp bg-orange">✳️ Claude <span class="kbd">⌃1</span></span>
       <span class="sp bg-gray">📓 Notion <span class="kbd">⌃2</span></span>
       <span class="sp bg-purple">🎙️ Meetings <span class="kbd">⌃3</span></span>
       <span class="sp bg-pink">💬 Slack <span class="kbd">⌃4</span></span>
       <span class="sp bg-blue">📅 Calendar <span class="kbd">⌃5</span></span>
-      <span class="sp bg-green">🍅 Focus <span class="kbd">⌃6</span></span>
+      <span class="sp bg-yellow">🤖 Agents <span class="kbd">⌃6</span></span>
+      <span class="sp bg-green">🍅 Focus <span class="kbd">⌃7</span></span>
     </div>
     <p style="margin-top:30px;font-size:15px;color:var(--muted)">Show or hide it anywhere with <span class="kbd">⌃`</span></p>
   </div>

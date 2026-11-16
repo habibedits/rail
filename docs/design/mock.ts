@@ -108,11 +108,33 @@ const liveSentences = [
   { speaker_name: 'Dana Whitfield', text: 'Great. Can you share a rough timeline by Friday?', start_time: 41 },
 ];
 
+// ---- Agents (Claude Code sessions) ----------------------------------------
+
+const agentSession = (id: string, project: string, status: string, activity: string, host: string, minsAgo: number, pending: unknown = null) => ({
+  id, cwd: `/Users/maya/code/${project}`, project, title: '', host, status, activity,
+  startedAt: Date.now() - (minsAgo + 20) * 60000, updatedAt: Date.now() - minsAgo * 60000, steps: [], pending, lastReply: '',
+});
+const agentSessions = [
+  agentSession('a1', 'northwind-web', 'permission', '', 'VS Code', 0, {
+    id: 'p1', kind: 'permission', tool: 'Bash', title: 'Run npm test', detail: 'npm test -- onboarding', canAlways: true, at: Date.now(),
+  }),
+  agentSession('a2', 'pricing-page', 'working', 'Editing PricingTable.tsx', 'Terminal', 0),
+  agentSession('a3', 'onboarding-v2', 'working', 'Running the checklist tests', 'VS Code', 1),
+  agentSession('a4', 'brightline-api', 'question', '', 'Terminal', 2, {
+    id: 'q1', kind: 'question', tool: 'AskUserQuestion', title: 'Which auth flow?', detail: '', canAlways: false, at: Date.now(),
+  }),
+  agentSession('a5', 'design-tokens', 'idle', 'Done: tokens exported', 'VS Code', 14),
+  agentSession('a6', 'docs-site', 'ended', 'Finished', 'Terminal', 52),
+  agentSession('a7', 'email-templates', 'working', 'Reading layout.html', 'Terminal', 0),
+  agentSession('a8', 'analytics-etl', 'idle', 'Done: 3 files changed', 'VS Code', 31),
+  agentSession('a9', 'mobile-app', 'working', 'Searching for useAuth', 'VS Code', 3),
+];
+
 // ---- The stand-in bridge --------------------------------------------------
 
 const ok = (data: unknown) => Promise.resolve({ ok: true, data });
 const state = {
-  spaces: SPACES.map((id) => ({ id, name: NAMES[id], badge: id === 'slack' ? 3 : id === 'agents' ? 1 : 0 })),
+  spaces: SPACES.map((id) => ({ id, name: NAMES[id], badge: id === 'slack' ? 3 : id === 'agents' ? 2 : 0 })),
   active: SPACES.indexOf(SPACE),
   pinned: false,
   collapsed: 'none',
@@ -129,6 +151,9 @@ const state = {
     error: null,
   }),
   onCal: () => () => {},
+  agents: () => ok({ connected: true, listening: true, error: null, sessions: agentSessions }),
+  onAgents: () => () => {},
+  onAgentsOpen: () => () => {},
   // &wheel=N shows the space wheel with slice N picked (&wheel=-1: none, &sticky=1: click mode)
   onWheel: (cb: (w: unknown) => void) => {
     const hover = Number(params.get('wheel'));

@@ -1,5 +1,5 @@
 // One Rail panel (top strip + one space) rendered with fake data.
-// ?space=claude|notion|meetings|slack|calendar|focus, plus a few extras:
+// ?space=claude|notion|meetings|slack|calendar|agents|focus, plus a few extras:
 //   calendar: &edit=1 opens the Edit form
 //   meetings: &open=1 opens the first meeting, &live=1 shows a live call
 //   focus:    &game=chess shows chess instead of Sudoku, &scroll=N scrolls down
@@ -14,6 +14,7 @@ import { Meetings } from '../../src/renderer/Meetings';
 import { Calendar } from '../../src/renderer/Calendar';
 import { Focus } from '../../src/renderer/Focus';
 import { Wheel } from '../../src/renderer/Wheel';
+import { Agents } from '../../src/renderer/Agents';
 
 const q = new URLSearchParams(location.search);
 
@@ -123,6 +124,7 @@ function Body() {
     case 'slack': return <Slack />;
     case 'meetings': return <Meetings />;
     case 'focus': return <Focus />;
+    case 'agents': return <Agents />;
     default: return <Calendar />;
   }
 }
