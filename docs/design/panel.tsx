@@ -3,6 +3,7 @@
 //   calendar: &edit=1 opens the Edit form
 //   meetings: &open=1 opens the first meeting, &live=1 shows a live call
 //   focus:    &game=chess shows chess instead of Sudoku, &scroll=N scrolls down
+//   wheel:    &wheel=N opens the space wheel with slice N picked (slices clockwise from the top)
 //   slack:    &switcher=1 shows the Shift+Space quick switcher, &switcher=2 with a search typed
 import { SPACE } from './mock';
 import { useEffect, useRef } from 'react';
@@ -11,7 +12,7 @@ import { createRoot } from 'react-dom/client';
 import '../../src/renderer/styles.css';
 import './panel.css';
 import { Strip } from '../../src/renderer/Strip';
-import { Divider } from '../../src/renderer/Divider';
+import { ClaudeBar, Divider } from '../../src/renderer/Divider';
 import { Meetings } from '../../src/renderer/Meetings';
 import { Calendar } from '../../src/renderer/Calendar';
 import { Focus } from '../../src/renderer/Focus';
@@ -61,7 +62,6 @@ function NotionPage() {
     <div className="fk notion">
       <div className="n-crumbs">Northwind Studio / Projects / <b>Onboarding v2</b></div>
       <div className="n-page">
-        <div className="n-icon">🧭</div>
         <h1>Onboarding v2 — Project brief</h1>
         <div className="n-props">
           <div><span>Status</span><em className="tag green">In progress</em></div>
@@ -180,8 +180,8 @@ function Body() {
     if (scroll) setTimeout(() => document.querySelector('.focus, .cal-scroll, .mscroll')?.scrollBy(0, scroll), 900);
   }, []);
   switch (SPACE) {
-    case 'claude': return <Claude />;
-    case 'notion': return <div className="fk-col"><div className="fk-divider"><Divider /></div><NotionPage /></div>;
+    case 'claude': return <div className="fk-col"><Claude /><div className="fk-bar"><ClaudeBar /></div></div>;
+    case 'notion': return <div className="fk-col"><NotionPage /><div className="fk-bar"><Divider /></div></div>;
     case 'slack': return q.get('switcher') ? <div className="fk-stack"><Slack /><Switcher mode={q.get('switcher')!} /></div> : <Slack />;
     case 'meetings': return <Meetings />;
     case 'focus': return <Focus />;

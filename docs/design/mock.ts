@@ -165,8 +165,11 @@ const state = {
   onWheel: (cb: (w: unknown) => void) => {
     const hover = Number(params.get('wheel'));
     const a = -Math.PI / 2 + hover * ((2 * Math.PI) / SPACES.length);
+    // The slices in the app's order (src/main/main.ts, WHEEL_ORDER).
+    const order = ['claude', 'notion', 'meetings', 'focus', 'calendar', 'agents', 'slack'];
+    const slots = order.map((id) => SPACES.indexOf(id));
     setTimeout(() => cb({
-      open: true, cx: 192, cy: 440, r: 138, spaces: state.spaces, active: state.active, hover,
+      open: true, cx: 192, cy: 430, r: 150, spaces: slots.map((i) => ({ ...state.spaces[i], index: i })), active: slots.indexOf(state.active), hover,
       px: hover >= 0 ? Math.round(60 * Math.cos(a)) : 0, py: hover >= 0 ? Math.round(60 * Math.sin(a)) : 0,
       sticky: params.get('sticky') === '1', via: params.get('via') === 'key' ? 'key' : 'mouse',
     }), 300);

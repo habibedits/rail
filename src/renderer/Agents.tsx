@@ -51,50 +51,76 @@ export function Agents() {
   const open = openId ? snap.sessions.find((s) => s.id === openId) : null;
   if (open) return <Detail s={open} now={now} act={act} back={() => setOpenId(null)} error={error} />;
 
-  const needYou = snap.sessions.filter((s) => s.pending).length;
-  const working = snap.sessions.filter((s) => s.status === 'working').length;
-  const done = snap.sessions.filter((s) => s.status === 'ended' || (s.status === 'idle' && !s.pending)).length;
+  const need = snap.sessions.filter((s) => s.pending);
+  const working = snap.sessions.filter((s) => !s.pending && s.status === 'working');
+  const done = snap.sessions.filter((s) => !s.pending && s.status !== 'working');
+  const row = (s: AgentSession) => <Row key={s.id} s={s} now={now} act={act} open={() => setOpenId(s.id)} />;
 
   return (
     <div className="agents">
-      <div className="mbar ag-bar">
-        <span className="ag-sum">
-          {snap.sessions.length === 0 ? 'No agents yet' : (
-            <>
-              {needYou > 0 && <b className="ag-need">{needYou} need{needYou === 1 ? 's' : ''} you</b>}
-              {needYou > 0 && (working > 0 || done > 0) && <span className="ag-dotsep">·</span>}
-              {working > 0 && <span>{working} working</span>}
-              {working > 0 && done > 0 && <span className="ag-dotsep">·</span>}
-              {done > 0 && <span>{done} done</span>}
-            </>
-          )}
-        </span>
-        <span className="spacer" />
-        {done > 0 && <button className="btn ghost small" onClick={() => void act({ op: 'clearEnded' })} title="Cross off every agent that’s finished">Clear done</button>}
+      <div className="mbar">
+        <div className="big-title">
+          <h1>Agents</h1>
+          <span className="spacer" />
+          {done.length > 0 && <button className="linkbtn blue" onClick={() => void act({ op: 'clearEnded' })} title="Cross off every agent that’s finished">Clear Done</button>}
+        </div>
+        <div className="ag-sum">
+          {snap.sessions.length === 0 ? 'No agents yet' : [
+            need.length ? <b key="n" className="ag-need">{need.length} need{need.length === 1 ? 's' : ''} you</b> : null,
+            working.length ? <span key="w">{working.length} working</span> : null,
+            done.length ? <span key="d">{done.length} done</span> : null,
+          ].filter(Boolean).flatMap((el, i) => (i ? [<span key={`s${i}`} className="ag-dotsep">·</span>, el] : [el]))}
+        </div>
       </div>
       {(error || snap.error) && <p className="error pad">{error || snap.error}</p>}
       <div className="mscroll">
-        {snap.sessions.length === 0 ? (
+        {snap.sessions.length === 0 && (
           <div className="ag-none">
             <Buddy seed="zz" status="idle" size={54} />
             <p className="muted">Start Claude Code in VS Code or a terminal and its buddy shows up here.</p>
           </div>
-        ) : (
-          <div className="ag-grid">
-            {snap.sessions.map((s) => (
-              <button key={s.id} className={`ag-tile ${s.pending ? 'need' : ''} ${s.status}`} onClick={() => setOpenId(s.id)} title={s.title || s.project}>
-                <Buddy seed={s.id} status={s.status} size={50} />
-                <span className="ag-name">{s.project}</span>
-                <span className="ag-act">{s.pending ? (s.pending.kind === 'question' ? 'Has a question' : 'Needs permission') : s.activity}</span>
-                <span className="ag-when">{s.host} · {ago(s.updatedAt, now)}</span>
-              </button>
-            ))}
-          </div>
         )}
+        {need.length > 0 && <><div className="sec-h">Needs You</div><div className="group">{need.map(row)}</div></>}
+        {working.length > 0 && <><div className="sec-h">Working</div><div className="group">{working.map(row)}</div></>}
+        {done.length > 0 && <><div className="sec-h">Done</div><div className="group">{done.map(row)}</div></>}
         <div className="ag-foot">
-          <button className="linkbtn muted" onClick={() => void act({ op: 'disconnect' })}>Disconnect Claude Code</button>
+          <span className="ag-conn"><i />Connected to Claude Code</span>
+          <button className="linkbtn muted" onClick={() => void act({ op: 'disconnect' })}>Disconnect</button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// One session in the list. A permission request can be answered right here.
+function Row({ s, now, act, open }: { s: AgentSession; now: number; act: (req: Parameters<typeof agents>[0]) => Promise<unknown>; open: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const p = s.pending;
+  const go = (choice: 'allow' | 'always' | 'deny') => { setBusy(true); void act({ op: 'decide', id: s.id, pendingId: p!.id, choice }).finally(() => setBusy(false)); };
+  const sub = p ? (p.kind === 'question' ? `${s.host} · has a question` : `${s.host} · ${p.title}`)
+    : s.status === 'working' ? s.activity : `${s.activity} · ${ago(s.updatedAt, now)}`;
+  return (
+    <div className={`ag-item ${s.status} ${p ? 'need' : ''}`}>
+      <button className="ag-row" onClick={open} title={s.title || s.project}>
+        <span className={`ag-av ${s.status === 'working' && !p ? 'ring' : ''}`}><Buddy seed={s.id} status={s.status} size={38} /></span>
+        <span className="ag-txt">
+          <b>{s.project}</b>
+          <small>{sub}</small>
+        </span>
+        {p ? (p.kind === 'question' ? <span className="pill orange">Answer</span> : <span className="need-dot">!</span>)
+          : s.status === 'working' ? <span className="ag-host">{s.host}</span>
+          : <span className="ag-check" aria-label="Done">✓</span>}
+      </button>
+      {p?.kind === 'permission' && (
+        <div className="ag-inline">
+          {p.detail && <pre className="ag-code">{p.detail}</pre>}
+          <div className="ag-btns">
+            <button className="btn" disabled={busy} onClick={() => go('deny')}>Don’t Allow</button>
+            {p.canAlways && <button className="btn" disabled={busy} onClick={() => go('always')} title="Allow, and don’t ask again for this in this project">Always Allow</button>}
+            <button className="btn primary" disabled={busy} onClick={() => go('allow')}>Allow Once</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -117,16 +143,18 @@ function Detail({ s, now, act, back, error }: {
 
   return (
     <div className="agents">
-      <div className="mbar ag-dhead">
-        <button className="icon" onClick={back} title="All agents">‹</button>
-        <Buddy seed={s.id} status={s.status} size={26} />
+      <div className="ag-nav">
+        <button className="pill-btn back" onClick={back} title="All agents">‹ Agents</button>
+        <span className="spacer" />
+        <button className="pill-btn" onClick={() => void act({ op: 'jump', id: s.id })} title={`Bring back ${s.host} on ${s.cwd}`}>Open in {s.host}</button>
+        <button className="round" aria-label="Cross off this session" onClick={() => { void act({ op: 'dismiss', id: s.id }); back(); }} title="Cross off this session">✕</button>
+      </div>
+      <div className="ag-dhead">
+        <Buddy seed={s.id} status={s.status} size={44} />
         <div className="ag-dtitle">
           <b>{s.project}</b>
-          <span>{statusWord(s)} · {s.host}</span>
+          <span className={s.pending ? 'need' : ''}>{statusWord(s)} · {s.host}</span>
         </div>
-        <span className="spacer" />
-        <button className="btn small" onClick={() => void act({ op: 'jump', id: s.id })} title={`Bring back ${s.host} on ${s.cwd}`}>Open in {s.host}</button>
-        <button className="icon" onClick={() => { void act({ op: 'dismiss', id: s.id }); back(); }} title="Cross off this session">✕</button>
       </div>
       {error && <p className="error pad">{error}</p>}
       <div
@@ -183,7 +211,7 @@ function Ask({ s, p, act }: { s: AgentSession; p: AgentPending; act: (req: Param
     };
     return (
       <div className="ag-ask q">
-        <div className="ag-ask-h"><span className="ag-pill">Question</span><span className="muted">Claude is waiting for your answer</span></div>
+        <div className="ag-grab" /><div className="ag-ask-h"><span className="ag-pill">Question</span><span className="muted">Claude is waiting for your answer</span></div>
         {qs.map((q) => (
           <div key={q.question} className="ag-q">
             {q.header && <span className="ag-qh">{q.header}</span>}
@@ -204,7 +232,7 @@ function Ask({ s, p, act }: { s: AgentSession; p: AgentPending; act: (req: Param
           </div>
         ))}
         <div className="ag-btns">
-          <button className="btn primary" disabled={!ready || busy} onClick={() => go({ op: 'answer', id: s.id, pendingId: p.id, answers: Object.fromEntries(qs.map((q) => [q.question, answerOf(q.question)])) })}>Send answer</button>
+          <button className="btn primary" disabled={!ready || busy} onClick={() => go({ op: 'answer', id: s.id, pendingId: p.id, answers: Object.fromEntries(qs.map((q) => [q.question, answerOf(q.question)])) })}>Send Answer</button>
         </div>
       </div>
     );
@@ -212,14 +240,13 @@ function Ask({ s, p, act }: { s: AgentSession; p: AgentPending; act: (req: Param
 
   return (
     <div className="ag-ask">
-      <div className="ag-ask-h"><span className="ag-pill">Permission</span><span className="muted">{p.tool === 'Bash' ? 'Wants to run a command' : `Wants to use ${p.tool}`}</span></div>
+      <div className="ag-grab" /><div className="ag-ask-h"><span className="ag-pill">Permission</span><span className="muted">{p.tool === 'Bash' ? 'Wants to run a command' : `Wants to use ${p.tool}`}</span></div>
       <p className="ag-qt">{p.title}</p>
       {p.detail && <pre className="ag-code big">{p.detail}</pre>}
       <div className="ag-btns">
-        <button className="btn" disabled={busy} onClick={() => go({ op: 'decide', id: s.id, pendingId: p.id, choice: 'deny' })}>Deny</button>
-        <span className="spacer" />
-        {p.canAlways && <button className="btn" disabled={busy} onClick={() => go({ op: 'decide', id: s.id, pendingId: p.id, choice: 'always' })} title="Allow, and don’t ask again for this in this project">Always allow</button>}
-        <button className="btn primary" disabled={busy} onClick={() => go({ op: 'decide', id: s.id, pendingId: p.id, choice: 'allow' })}>Allow</button>
+        <button className="btn" disabled={busy} onClick={() => go({ op: 'decide', id: s.id, pendingId: p.id, choice: 'deny' })}>Don’t Allow</button>
+        {p.canAlways && <button className="btn" disabled={busy} onClick={() => go({ op: 'decide', id: s.id, pendingId: p.id, choice: 'always' })} title="Allow, and don’t ask again for this in this project">Always Allow</button>}
+        <button className="btn primary" disabled={busy} onClick={() => go({ op: 'decide', id: s.id, pendingId: p.id, choice: 'allow' })}>Allow Once</button>
       </div>
     </div>
   );

@@ -82,11 +82,11 @@ export function Focus() {
       )}
 
       <div className="fx-controls">
-        <button className="btn ghost" onClick={() => act({ op: 'reset' })} title="Restart this timer">Reset</button>
-        <button className="btn primary big" onClick={() => act({ op: snap.running ? 'pause' : 'start' })}>
+        <button className="circ" onClick={() => act({ op: 'reset' })} title="Restart this timer">Reset</button>
+        <button className="linkbtn blue" onClick={() => act({ op: 'skip' })} title={isBreak ? 'Skip the break' : 'Skip to a break (not logged)'}>Skip</button>
+        <button className={`circ go ${snap.running ? 'pause' : ''}`} onClick={() => act({ op: snap.running ? 'pause' : 'start' })}>
           {snap.running ? 'Pause' : left < snap.duration ? 'Resume' : 'Start'}
         </button>
-        <button className="btn ghost" onClick={() => act({ op: 'skip' })} title={isBreak ? 'Skip the break' : 'Skip to a break (not logged)'}>Skip</button>
       </div>
 
       <History sessions={snap.sessions} />

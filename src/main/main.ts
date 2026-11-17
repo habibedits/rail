@@ -34,12 +34,16 @@ import { execFile } from 'node:child_process';
 // Constants
 // ---------------------------------------------------------------------------
 
-const STRIP_H = 28; // top strip: space dots, name, pane actions, pin, hide
-const DIVIDER_H = 24; // Notion pane header (back/forward, recent pages)
+const STRIP_H = 48; // top: the glass tab bar of spaces, pin, hide
+const BAR_H = 52; // bottom toolbar of the Claude and Notion panes (back, forward, page, …)
+const EDGE_GAP = 8; // the panel floats this far in from the screen's edges
+// Space wheel: which space sits in each slice, clockwise from the top. The top
+// three (Slack, Claude, Notion) are the quick flick-up ones.
+const WHEEL_ORDER = ['claude', 'notion', 'meetings', 'focus', 'calendar', 'agents', 'slack'] as const;
 const MIN_W = 320; // claude.ai's narrow layout stays usable at this width
 const SLIDE_MS = 250;
 const HOTKEY = 'Control+`';
-const BG = '#f5f5f4';
+const CLEAR = '#00000000'; // Rail's own views: the window's frosted glass shows through
 
 const DEV_URL = process.env.RAIL_DEV_URL;
 const PRELOAD_WEB = path.join(__dirname, '../preload/web.js');
@@ -87,6 +91,7 @@ let cfg: Config;
 let win: BaseWindow;
 let strip: WebContentsView;
 let divider: WebContentsView;
+let claudeBar: WebContentsView;
 let claude: WebContentsView;
 let notion: WebContentsView;
 let meetings: WebContentsView;
@@ -119,7 +124,7 @@ function createShellView(name: string) {
   const view = new WebContentsView({
     webPreferences: { preload: PRELOAD_SHELL, contextIsolation: true, sandbox: true },
   });
-  view.setBackgroundColor(BG);
+  view.setBackgroundColor(CLEAR);
   shellIds.add(view.webContents.id);
   attachKeys(view.webContents);
   // A shell page whose first load fails (seen right after reinstalling the app)
@@ -308,11 +313,19 @@ function watchMiddleRelease() {
   p.on('error', () => { if (releaseWatch === p) releaseWatch = null; });
 }
 
+// Slice i of the wheel shows space wheelSlots()[i].
+const wheelSlots = () => WHEEL_ORDER.map((id) => spaceIndex(id)).filter((i) => i >= 0);
+
 function sendWheel() {
   if (!wheelView || wheelView.webContents.isDestroyed()) return;
   const s = state();
+  const slots = wheelSlots();
   wheelView.webContents.send('rail:wheel', wheel
-    ? { open: true, cx: wheel.cx, cy: wheel.cy, r: wheel.r, spaces: s.spaces, active, hover: wheel.hover, px: wheel.px, py: wheel.py, sticky: wheel.sticky, via: wheel.via }
+    ? {
+        open: true, cx: wheel.cx, cy: wheel.cy, r: wheel.r,
+        spaces: slots.map((i) => ({ ...s.spaces[i], index: i })),
+        active: slots.indexOf(active), hover: wheel.hover, px: wheel.px, py: wheel.py, sticky: wheel.sticky, via: wheel.via,
+      }
     : { open: false });
 }
 
@@ -337,7 +350,7 @@ function trackWheel() {
   const px = cur.x - wheel.ox;
   const py = cur.y - wheel.oy;
   const d = Math.hypot(px, py);
-  const n = SPACES.length;
+  const n = wheelSlots().length;
   const seg = 360 / n;
   const deg = (Math.atan2(py, px) * 180) / Math.PI + 90 + seg / 2; // 0 = straight up
   let hover = Math.floor((((deg % 360) + 360) % 360) / seg);
@@ -371,9 +384,14 @@ function wheelClick() {
   else closeWheel();
 }
 
+// i is a slice of the wheel; the number keys go straight to a space (wheelGo).
 function wheelPick(i: number) {
+  wheelGo(wheelSlots()[i] ?? active);
+}
+
+function wheelGo(space: number) {
   closeWheel();
-  if (i !== active) goTo(i);
+  if (space !== active) goTo(space);
 }
 
 function closeWheel() {
@@ -395,7 +413,7 @@ function wheelKey(e: Electron.Event, input: Electron.Input) {
       if (isAlt) return true;
       const m = /^Digit([1-9])$/.exec(input.code);
       if (input.key === 'Escape') { e.preventDefault(); closeWheel(); return true; }
-      if (m && Number(m[1]) <= SPACES.length) { e.preventDefault(); wheelPick(Number(m[1]) - 1); return true; }
+      if (m && Number(m[1]) <= SPACES.length) { e.preventDefault(); wheelGo(Number(m[1]) - 1); return true; }
       if (input.key === 'Enter') { e.preventDefault(); wheelClick(); return true; }
       closeWheel(); // any other key: close, and let the key through
       return false;
@@ -423,7 +441,8 @@ function wheelKey(e: Electron.Event, input: Electron.Input) {
 function dockBounds(display: Display): Rectangle {
   const wa = display.workArea;
   const width = Math.min(wa.width, Math.max(MIN_W, Math.round(wa.width * cfg.widthPct)));
-  return { x: wa.x + wa.width - width, y: wa.y, width, height: wa.height };
+  // Float a little in from the edge, like a sidebar panel, not glued to it.
+  return { x: wa.x + wa.width - width - EDGE_GAP, y: wa.y + EDGE_GAP, width, height: wa.height - 2 * EDGE_GAP };
 }
 
 function currentDisplay() {
@@ -439,7 +458,7 @@ function showRail() {
   // Appear on whichever display the pointer is on.
   const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
   const target = dockBounds(display);
-  win.setBounds({ ...target, x: target.x + target.width });
+  win.setBounds({ ...target, x: target.x + target.width + EDGE_GAP });
   win.show();
   win.setBounds(target, true); // native macOS slide
   shown = true;
@@ -450,7 +469,7 @@ function hideRail() {
   closeWheel();
   const b = win.getBounds();
   shown = false;
-  win.setBounds({ ...b, x: b.x + b.width }, true);
+  win.setBounds({ ...b, x: b.x + b.width + EDGE_GAP }, true);
   setTimeout(() => { if (!shown) win.hide(); }, 220);
 }
 
@@ -489,9 +508,12 @@ function layout() {
 
 // Claude and Notion each get a whole space; Notion keeps its header bar.
 function layoutWork(w: number, h: number) {
-  claude.setBounds({ x: 0, y: 0, width: w, height: h });
-  divider.setBounds({ x: 0, y: 0, width: w, height: DIVIDER_H });
-  notion.setBounds({ x: 0, y: DIVIDER_H, width: w, height: Math.max(0, h - DIVIDER_H) });
+  // Claude and Notion keep their toolbar at the bottom, like Safari.
+  const page = Math.max(0, h - BAR_H);
+  claude.setBounds({ x: 0, y: 0, width: w, height: page });
+  claudeBar.setBounds({ x: 0, y: page, width: w, height: BAR_H });
+  notion.setBounds({ x: 0, y: 0, width: w, height: page });
+  divider.setBounds({ x: 0, y: page, width: w, height: BAR_H });
 }
 
 const spaceIndex = (id: (typeof SPACES)[number]['id']) => SPACES.findIndex((sp) => sp.id === id);
@@ -678,13 +700,14 @@ function showNotionTrail() {
   items.push(
     { type: 'separator' },
     { label: 'Notion Home', click: () => wc.loadURL(NOTION_URL) },
+    { label: 'Reload Page', click: () => wc.reload() },
     { label: 'Open in Browser', click: () => paneAction('notion', 'external') },
     { label: 'Open in Notion App', click: () => paneAction('notion', 'app') },
     { type: 'separator' },
     { label: 'Clear Recent Pages', enabled: cfg.notionTrail.length > 0, click: () => { cfg.notionTrail = []; saveConfig(cfg); } },
   );
   const d = divider.getBounds();
-  Menu.buildFromTemplate(items).popup({ window: win, x: 44, y: STRIP_H + d.y + DIVIDER_H });
+  Menu.buildFromTemplate(items).popup({ window: win, x: 60, y: STRIP_H + d.y });
 }
 
 // Up / down through Notion's page tree (the Notion header's ↑ and ↓).
@@ -743,12 +766,12 @@ async function notionDown() {
     ? ok.map((k) => ({ label: k.kind === 'Meeting note' ? `\u{1F4DD}  ${k.title}` : k.title, sublabel: k.kind, click: () => wc.loadURL(k.url) }))
     : [{ label: 'No pages inside this one', enabled: false }];
   const d = divider.getBounds();
-  Menu.buildFromTemplate(items).popup({ window: win, x: 60, y: STRIP_H + d.y + DIVIDER_H });
+  Menu.buildFromTemplate(items).popup({ window: win, x: Math.max(0, d.width - 220), y: STRIP_H + d.y });
 }
 
 function broadcast() {
   const s = state();
-  for (const v of [strip, divider, meetings]) {
+  for (const v of [strip, divider, claudeBar, meetings]) {
     if (v && !v.webContents.isDestroyed()) v.webContents.send('rail:state', s);
   }
 }
@@ -882,7 +905,7 @@ function rebuildPane(pane: 'claude' | 'notion', dead: WebContentsView) {
   setTimeout(() => {
     if (quitting) return;
     console.warn(`[rail] ${pane} pane was closed by its page; rebuilding`);
-    const work = containers[0];
+    const work = containers[pane === 'claude' ? 0 : 1];
     work.removeChildView(dead);
     if (pane === 'claude') {
       claude = makeClaude();
@@ -1321,9 +1344,13 @@ function createWindow() {
     maximizable: false,
     fullscreenable: false,
     hasShadow: true,
+    roundedCorners: true,
+    // Frosted glass behind Rail's own spaces and bars (macOS sidebar material).
+    vibrancy: 'sidebar',
+    visualEffectState: 'active',
     // A side panel: the first click should act, not just focus the window.
     acceptFirstMouse: true,
-    backgroundColor: BG,
+    backgroundColor: CLEAR,
     show: false,
   });
   win.setAlwaysOnTop(cfg.alwaysOnTop, 'floating');
@@ -1334,6 +1361,8 @@ function createWindow() {
   const claudeSpace = new View();
   claude = makeClaude();
   claudeSpace.addChildView(claude);
+  claudeBar = createShellView('claudebar');
+  claudeSpace.addChildView(claudeBar);
   const notionSpace = new View();
   notionSpace.addChildView(divider);
   notion = makeNotion();
@@ -1365,7 +1394,6 @@ function createWindow() {
   win.contentView.addChildView(focusContainer);
   win.contentView.addChildView(strip);
   wheelView = createShellView('wheel'); // the space wheel, on top of everything
-  wheelView.setBackgroundColor('#00000000');
   wheelView.setVisible(false);
   win.contentView.addChildView(wheelView);
 

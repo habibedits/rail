@@ -2,6 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActiveMeeting, ff, Meeting, MeetingDetail, useRailState } from './rail';
 import { Caret, Reload } from './icons';
 
+// The live card's waveform (decoration: Fireflies sends text, not audio levels).
+const WAVE = [6, 10, 16, 22, 14, 8, 18, 26, 20, 12, 9, 16, 24, 28, 18, 12, 7, 6, 12, 20, 26, 16, 10, 7, 14, 22, 26, 18, 11, 7];
+
 // Space 2: Fireflies meetings (PRD §6.3).
 
 const REFRESH_MS = 5 * 60 * 1000;
@@ -149,19 +152,26 @@ function MeetingList(props: { onAuthError: () => void; onEditKey: () => void }) 
   return (
     <div className="meetings list">
       <div className="mbar">
-        <input
-          className="search"
-          type="search"
-          placeholder="Search meetings"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-        <button className="icon" title="Refresh" disabled={loading} onClick={() => load(query)}>
-          <span className={loading ? 'spin' : ''}><Reload /></span>
-        </button>
-        <button className="icon" title="Fireflies API key" onClick={props.onEditKey}>
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="5.5" cy="10.5" r="3" /><path d="M7.7 8.3 13.5 2.5M11 5l1.8 1.8M12.5 3.5l1 1" /></svg>
-        </button>
+        <div className="big-title">
+          <h1>Meetings</h1>
+          <span className="spacer" />
+          <button className="round" title="Refresh" aria-label="Refresh" disabled={loading} onClick={() => load(query)}>
+            <span className={loading ? 'spin' : ''}><Reload /></span>
+          </button>
+          <button className="round" title="Fireflies API key" aria-label="Fireflies API key" onClick={props.onEditKey}>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="5.5" cy="10.5" r="3" /><path d="M7.7 8.3 13.5 2.5M11 5l1.8 1.8M12.5 3.5l1 1" /></svg>
+          </button>
+        </div>
+        <label className="searchbar">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4 4" /></svg>
+          <input
+            className="search"
+            type="search"
+            placeholder="Search meetings"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </label>
       </div>
 
       <div className="mscroll">
@@ -170,15 +180,20 @@ function MeetingList(props: { onAuthError: () => void; onEditKey: () => void }) 
         {items && items.length === 0 && !loading && (
           <p className="muted pad">{query ? 'No meetings match.' : 'No meetings yet.'}</p>
         )}
-        {items?.map((m) => (
-          <MeetingRow
-            key={m.id}
-            m={m}
-            open={openId === m.id}
-            onToggle={() => setOpenId(openId === m.id ? null : m.id)}
-            say={say}
-          />
-        ))}
+        {items && items.length > 0 && <div className="sec-h">Recent</div>}
+        {items && items.length > 0 && (
+          <div className="group">
+            {items.map((m) => (
+              <MeetingRow
+                key={m.id}
+                m={m}
+                open={openId === m.id}
+                onToggle={() => setOpenId(openId === m.id ? null : m.id)}
+                say={say}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {toast && <div className="toast">{toast}</div>}
@@ -552,6 +567,9 @@ function LiveCard({ m, visible, say }: { m: ActiveMeeting; visible: boolean; say
       </button>
       {open && (
         <>
+          <div className="live-wave" aria-hidden="true">
+            {WAVE.map((h, i) => <i key={i} style={{ height: h, animationDelay: `${(i % 7) * -0.17}s` }} />)}
+          </div>
           <div className="dbar">
             <button className="btn small primary" disabled={!!busy}
               onClick={() => act('claude', () => ff({ op: 'liveClaude', id: m.id, title: m.title }), (d) => (d === 'pasted' ? 'Sent to Claude' : 'Copied — ⌘V to paste in Claude'))}>

@@ -4,6 +4,8 @@
 
 **Rail is a side panel that lives on the right edge of your Mac.** It keeps the tools you check all day (Claude, Notion, your meeting recaps, Slack, today's calendar and a focus timer) one keystroke away, without another browser tab or another app window.
 
+It looks and feels like part of macOS: a frosted-glass panel floating just inside the edge of the screen, a tab bar of space symbols across the top, big titles, rounded lists and the system colors, in light and dark mode.
+
 Press `⌃` `` ` `` anywhere to slide it in or out. Swipe with two fingers on the panel, or press `⌃1` to `⌃7`, to move between spaces.
 
 > All names, companies and meetings in these images are made up.
@@ -25,7 +27,7 @@ Press `⌃` `` ` `` anywhere to slide it in or out. Swipe with two fingers on th
 | ✳️ | **Claude** | `⌃1` | claude.ai, signed in, always open. |
 | 📓 | **Notion** | `⌃2` | Your real Notion, re-fit for a narrow pane. |
 | 🎙️ | **Meetings** | `⌃3` | Fireflies recaps, action items, transcripts and live calls. |
-| 💬 | **Slack** | `⌃4` | Slack, completely silent. Unreads show as a count on its dot. |
+| 💬 | **Slack** | `⌃4` | Slack, completely silent. Unreads show as a count on its tab. |
 | 📅 | **Calendar** | `⌃5` | Today from every Notion Calendar account, in one view. |
 | 🤖 | **Agents** | `⌃6` | Every Claude Code session as a little buddy: what it's doing, Allow, answers. |
 | 🍅 | **Focus** | `⌃7` | A Pomodoro timer, a streak grid, Sudoku and chess puzzles. |
@@ -41,7 +43,7 @@ Press `⌃` `` ` `` anywhere to slide it in or out. Swipe with two fingers on th
 - **Move things fast.** Drag an event to move it (it snaps to 15 minutes). **Drag across empty time** to draw a new event, or double-click a slot, or press **+**.
 - **Edit** an event's name, date and time on its card. If other people are invited, Rail asks first, because they'll get an update.
 - **Click an event** to read its description and location, RSVP, open its Notion meeting note, or **Join & transcribe** the call.
-- **A nudge** 5 minutes before each meeting. The Calendar dot counts down (`12m`, `now`).
+- **A nudge** 5 minutes before each meeting. The Calendar tab counts down (`12m`, `now`).
 
 ## 🎙️ Meetings
 
@@ -56,9 +58,9 @@ Press `⌃` `` ` `` anywhere to slide it in or out. Swipe with two fingers on th
 
 When Claude Code is minimized, you can't see what your agents are doing. The Agents space shows you.
 
-- **A buddy per session.** Every Claude Code session on your Mac (VS Code, Cursor, Terminal, iTerm…) gets its own little creature. It bobs while it works, hops with a **!** or **?** when it needs you, and dozes when it's done. The Agents dot counts the ones waiting on you.
+- **A buddy per session.** Every Claude Code session on your Mac (VS Code, Cursor, Terminal, iTerm…) gets its own little creature. It bobs while it works, hops with a **!** or **?** when it needs you, and dozes when it's done. Sessions are listed under **Needs You**, **Working** (with a progress ring) and **Done**, and the Agents tab counts the ones waiting on you.
 - **Click one** to follow it step by step: your prompt, each file it reads or edits, each command, and its reply.
-- **Allow / Deny** permission prompts right there (or **Always allow**). Claude Code's own prompt still shows too; whichever you answer first wins.
+- **Allow Once / Don’t Allow** a permission prompt right in the list (or **Always Allow**). Claude Code's own prompt still shows too; whichever you answer first wins.
 - **Answer its questions** without opening the editor: pick an option or type your own.
 - **Open in VS Code** (or whichever app it runs in) jumps back to its window. **✕** crosses a session off; **Clear done** clears every finished one.
 - A notification when an agent needs you while Rail is hidden or on another space.
@@ -70,8 +72,8 @@ When Claude Code is minimized, you can't see what your agents are doing. The Age
 <img src="docs/images/notion.png" alt="The Notion space with the menu of pages inside the current page" width="100%">
 
 - The real Notion site, with margins, pop-ups and blocks re-fit so nothing gets cut off at 384 px wide.
-- **Back / forward**, **↑ up** to the page this one lives in, and **↓ down** into any sub-page, meeting note or database on the page.
-- Click the page title for your **15 most recent pages**, Notion home, or "open in the Notion app".
+- A toolbar at the bottom, like Safari's: **back / forward**, **↑ up** to the page this one lives in, and **↓ down** into any sub-page, meeting note or database on the page.
+- Click the page title in the toolbar for your **15 most recent pages**, Notion home, reload, or "open in the Notion app".
 - `notion://` links from Calendar, Slack or Claude open right here instead of in a browser.
 
 ## 🍅 Focus
@@ -84,7 +86,7 @@ When Claude Code is minimized, you can't see what your agents are doing. The Age
 
 ## 💬 Slack and ✳️ Claude
 
-Both are the real sites, signed in once and kept open. Slack in Rail is **silent**: no notifications and no alert sounds (huddles and clips you click still play). The unread count shows only on the Slack dot. Hovering a message shows only Slack's ⋮ menu, not the row of reactions and buttons; press **R** to react or **T** to reply while hovering.
+Both are the real sites, signed in once and kept open. Claude has its own toolbar at the bottom: back, reload, **New chat** and open in the browser. Slack in Rail is **silent**: no notifications and no alert sounds (huddles and clips you click still play). The unread count shows only on Slack's tab. Hovering a message shows only Slack's ⋮ menu, not the row of reactions and buttons; press **R** to react or **T** to reply while hovering.
 
 ### ⚡ Slack quick switcher
 
@@ -134,9 +136,9 @@ Rail isn't code-signed. If macOS blocks it the first time, right-click Rail in A
 
 <img src="docs/images/wheel.png" alt="The space wheel open over Notion (mouse) and over Calendar (trackpad, holding Option)" width="100%">
 
-Jump to any space without hunting for its dot, like a ping wheel in a game.
+Jump to any space without hunting for its tab, like a ping wheel in a game.
 
-- **Mouse:** hold the **middle button** (click the scroll wheel) anywhere on Rail. A ring of every space pops up. Nudge toward one and **let go**: the last highlighted space opens. It goes by direction, not distance, so a small flick is enough.
+- **Mouse:** hold the **middle button** (click the scroll wheel) anywhere on Rail. A pie of every space pops up. Nudge toward a slice and **let go**: the last highlighted space opens. It goes by direction, not distance, so a small flick is enough. **Slack, Claude and Notion are the top three slices**, so the spaces you open most are a flick up.
 - **Trackpad:** hold **Option (⌥)** for a moment, glide your finger toward a space, and **let go of Option**.
 - **Quick click instead of hold:** a quick middle click (or a short Option hold) leaves the wheel open. Click a slice to go there.
 - While it's open, `1`–`7` pick directly, and `Esc`, or letting go in the middle, cancels.
@@ -151,8 +153,8 @@ Jump to any space without hunting for its dot, like a ping wheel in a game.
 | `⌃⌥←` / `⌃⌥→`, or a two-finger swipe on the panel | Previous / next space |
 | Hold the middle mouse button, or hold `⌥` | Space wheel: nudge toward a space and let go |
 | `⇧Space` (in Slack) | Slack quick switcher: recent chats, quick reply, search |
-| Pin button (top strip) | Keep Rail above other windows |
-| Hide button (top strip) | Slide Rail away |
+| Pin button (top right) | Keep Rail above other windows |
+| Hide button (top right) | Slide Rail away |
 
 ## Your data stays on your Mac
 
@@ -185,7 +187,7 @@ npm run dev
 
 ### Remaking the README images
 
-The images use Rail's real React screens with made-up data (`docs/design/mock.ts`), framed in Notion-style pages (`docs/design/shots/`).
+The images use Rail's real React screens with made-up data (`docs/design/mock.ts`), framed in Apple-style pages (`docs/design/shots/`).
 
 ```bash
 npx vite --config docs/design/vite.config.mts

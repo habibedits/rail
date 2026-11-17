@@ -1,15 +1,14 @@
 import { useEffect, useState } from 'react';
 import { send, type WheelState } from './rail';
+import { SpaceIcon } from './icons';
 
-// The space wheel: a ring of every space, drawn over the whole panel. The main
-// process decides which slice is picked (it follows the pointer); this view
-// only draws it. Slice 0 is at the top, then clockwise.
-const ICON: Record<string, string> = {
-  claude: '✳️', notion: '📓', meetings: '🎙️', slack: '💬', calendar: '📅', agents: '🤖', focus: '🍅',
-};
+// The space wheel: a pie of every space, drawn over the whole panel. The main
+// process decides which slice is picked (it follows the pointer) and the order
+// of the slices; this view only draws them. Slice 0 is at the top, then clockwise.
 
-function sector(cx: number, cy: number, r0: number, r1: number, a0: number, a1: number) {
-  const p = (r: number, a: number) => `${cx + r * Math.cos(a)} ${cy + r * Math.sin(a)}`;
+// One pie slice between angles a0 and a1, from the hub (r0) to the rim (r1).
+function slice(cx: number, cy: number, r0: number, r1: number, a0: number, a1: number) {
+  const p = (r: number, a: number) => `${(cx + r * Math.cos(a)).toFixed(1)} ${(cy + r * Math.sin(a)).toFixed(1)}`;
   const large = a1 - a0 > Math.PI ? 1 : 0;
   return `M${p(r0, a0)} L${p(r1, a0)} A${r1} ${r1} 0 ${large} 1 ${p(r1, a1)} L${p(r0, a1)} A${r0} ${r0} 0 ${large} 0 ${p(r0, a0)} Z`;
 }
@@ -28,49 +27,48 @@ export function Wheel() {
 
   const { cx, cy, r, spaces, hover, active } = w;
   const n = spaces.length;
-  const ri = r * 0.38;
+  const hub = r * 0.33;
   const seg = (2 * Math.PI) / n;
-  const gap = 0.025;
   const picked = hover >= 0 ? spaces[hover] : null;
+  const shown = picked ?? spaces[active];
   const reach = Math.hypot(w.px, w.py);
   const k = reach > r * 0.92 ? (r * 0.92) / reach : 1;
+  const icon = Math.round(Math.max(18, Math.min(24, r * 0.17)));
 
   return (
     <div className="wheel-root">
-      <svg width="100%" height="100%" className="wheel-svg">
-        <g className="wheel-ring" style={{ transformOrigin: `${cx}px ${cy}px` }}>
-          <circle cx={cx} cy={cy} r={r + 6} className="wheel-plate" />
+      <div className="wheel-ring" style={{ transformOrigin: `${cx}px ${cy}px` }}>
+        <svg width="100%" height="100%" className="wheel-svg" aria-hidden="true">
+          <circle cx={cx} cy={cy} r={r + 7} className="wheel-plate" />
           {spaces.map((s, i) => {
             const mid = -Math.PI / 2 + i * seg;
-            const a0 = mid - seg / 2 + gap;
-            const a1 = mid + seg / 2 - gap;
-            const lr = (ri + r) / 2;
-            const lx = cx + lr * Math.cos(mid);
-            const ly = cy + lr * Math.sin(mid);
-            const on = i === hover;
-            return (
-              <g key={s.id} className={`wheel-slice ${on ? 'on' : ''} ${i === active ? 'current' : ''}`}>
-                <path d={sector(cx, cy, ri, r, a0, a1)} />
-                <text x={lx} y={ly - 7} className="wheel-ic">{ICON[s.id] ?? '•'}</text>
-                <text x={lx} y={ly + 13} className="wheel-name">{s.name}</text>
-                {typeof s.badge === 'number' && s.badge > 0 && (
-                  <g>
-                    <circle cx={lx + 15} cy={ly - 17} r={8} className="wheel-badge" />
-                    <text x={lx + 15} y={ly - 13.5} className="wheel-badge-t">{s.badge > 9 ? '9+' : s.badge}</text>
-                  </g>
-                )}
-                {i === active && <circle cx={cx + (r - 7) * Math.cos(mid)} cy={cy + (r - 7) * Math.sin(mid)} r={2.5} className="wheel-here" />}
-              </g>
-            );
+            return <path key={s.id} d={slice(cx, cy, hub, r, mid - seg / 2, mid + seg / 2)} className={`wheel-slice ${i === hover ? 'on' : ''}`} />;
           })}
-          <circle cx={cx} cy={cy} r={ri - 5} className="wheel-hub" />
-          <text x={cx} y={cy - 2} className="wheel-hub-name">{picked ? picked.name : spaces[active]?.name}</text>
-          <text x={cx} y={cy + 13} className="wheel-hub-hint">
-            {picked ? `⌃${hover + 1}` : w.sticky ? 'pick one · esc' : w.via === 'key' ? 'glide, let go' : 'nudge, let go'}
-          </text>
+          <circle cx={cx} cy={cy} r={hub} className="wheel-hub" />
           {!w.sticky && <circle cx={cx + w.px * k} cy={cy + w.py * k} r={4} className="wheel-reticle" />}
-        </g>
-      </svg>
+        </svg>
+        {spaces.map((s, i) => {
+          const mid = -Math.PI / 2 + i * seg;
+          const lr = (hub + r) / 2 + 2;
+          return (
+            <div
+              key={s.id}
+              className={`wheel-label ${i === hover ? 'on' : ''} ${i === active ? 'current' : ''}`}
+              style={{ left: cx + lr * Math.cos(mid), top: cy + lr * Math.sin(mid) }}
+            >
+              <span className="wheel-ic">
+                <SpaceIcon id={s.id} size={icon} />
+                {typeof s.badge === 'number' && s.badge > 0 && <span className="badge">{s.badge > 9 ? '9+' : s.badge}</span>}
+              </span>
+              <span className="wheel-name">{s.name}</span>
+            </div>
+          );
+        })}
+        <div className="wheel-hubtext" style={{ left: cx, top: cy }}>
+          <b>{shown?.name}</b>
+          <span>{picked ? `⌃${picked.index + 1}` : w.sticky ? 'pick one · esc' : w.via === 'key' ? 'glide, let go' : 'flick, let go'}</span>
+        </div>
+      </div>
     </div>
   );
 }

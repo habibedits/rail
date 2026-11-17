@@ -12,8 +12,8 @@ export interface RailState {
 export interface WheelState {
   open: boolean;
   cx: number; cy: number; r: number; // ring center and radius, in the wheel view's pixels
-  spaces: RailState['spaces'];
-  active: number;
+  spaces: (RailState['spaces'][number] & { index: number })[]; // in slice order, clockwise from the top
+  active: number; // the slice of the space you're on
   hover: number; // -1 = none (pointer still in the middle)
   px: number; py: number; // pointer offset from the center (the reticle)
   sticky: boolean; // opened by a quick click: stays open until you click a slice

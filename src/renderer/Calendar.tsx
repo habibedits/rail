@@ -200,7 +200,14 @@ function Today({ snap, busy, error, run }: { snap: CalSnapshot; busy: string; er
     window.addEventListener('pointerup', onUp);
   };
 
-  const day = new Date(dayMs).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', ...(new Date(dayMs).getFullYear() !== new Date(now).getFullYear() ? { year: 'numeric' } : {}) });
+  const shown = new Date(dayMs);
+  const weekday = shown.toLocaleDateString('en-US', { weekday: 'long' });
+  const monthLabel = shown.toLocaleDateString('en-US', { month: 'long', day: 'numeric', ...(shown.getFullYear() !== new Date(now).getFullYear() ? { year: 'numeric' } : {}) });
+  // The week (Sunday to Saturday) around the day shown: tap a day to go there.
+  const week = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(shown.getFullYear(), shown.getMonth(), shown.getDate() - shown.getDay() + i);
+    return { ms: d.getTime(), n: d.getDate(), wd: 'SMTWTFS'[i] };
+  });
   const onCount = snap.calendars.filter((c) => c.on).length;
   const nextSlot = () => (isToday ? Math.ceil(now / (30 * 60000)) * 30 * 60000 : dayMs + 9 * 3600000);
   const pickDay = (d: number) => { setMonthOpen(false); void run('day', { op: 'day', day: d }); };
@@ -208,20 +215,32 @@ function Today({ snap, busy, error, run }: { snap: CalSnapshot; busy: string; er
   return (
     <div className="cal">
       <div className="cal-head">
-        <button className={`cal-daybtn ${monthOpen ? 'open' : ''}`} onClick={() => setMonthOpen(!monthOpen)} title="Pick a day">
-          <div className="cal-day">{day} <span className="caret">▾</span></div>
-          <div className="cal-tz">{zoneLabel()}</div>
-        </button>
-        {!isToday && <button className="btn small ghost cal-today" disabled={busy === 'day'} onClick={() => pickDay(now)}>Today</button>}
-        <div className="spacer" />
-        <button className={`cal-pick ${picker ? 'open' : ''}`} onClick={() => setPicker(!picker)} title="Choose calendars">
-          <span className="dots3">{snap.calendars.filter((c) => c.on).slice(0, 4).map((c) => <i key={c.key} style={{ background: color.get(c.key) }} />)}</span>
-          {onCount} of {snap.calendars.length} ▾
-        </button>
-        <button className="icon" title="Add event" onClick={() => { setAddEnd(null); setSweep(null); setAdding(adding !== null ? null : nextSlot()); }}><span className="plus">+</span></button>
-        <button className="icon" title="Refresh" disabled={!!busy} onClick={() => run('refresh', { op: 'refresh' })}>
-          <span className={busy && busy !== 'load' ? 'spin' : ''}><Reload /></span>
-        </button>
+        <div className="cal-top">
+          <button className={`cal-daybtn ${monthOpen ? 'open' : ''}`} onClick={() => setMonthOpen(!monthOpen)} title="Pick a day from the month">
+            <div className="cal-eyebrow">{monthLabel}</div>
+            <div className="cal-day">{weekday} <span className="caret">▾</span></div>
+          </button>
+          <div className="spacer" />
+          <button className={`cal-pick ${picker ? 'open' : ''}`} onClick={() => setPicker(!picker)} title="Choose calendars">
+            <span className="dots3">{snap.calendars.filter((c) => c.on).slice(0, 4).map((c) => <i key={c.key} style={{ background: color.get(c.key) }} />)}</span>
+            {onCount} of {snap.calendars.length}
+          </button>
+          <button className="round" title="Refresh" aria-label="Refresh" disabled={!!busy} onClick={() => run('refresh', { op: 'refresh' })}>
+            <span className={busy && busy !== 'load' ? 'spin' : ''}><Reload /></span>
+          </button>
+          <button className="round blue" title="Add event" aria-label="Add event" onClick={() => { setAddEnd(null); setSweep(null); setAdding(adding !== null ? null : nextSlot()); }}><span className="plus">+</span></button>
+        </div>
+        <div className="cal-week">
+          {week.map((d) => (
+            <button key={d.ms} className={`wk ${d.ms === dayMs ? 'sel' : ''} ${d.ms === todayMs ? 'today' : ''}`} disabled={busy === 'day'} onClick={() => d.ms !== dayMs && pickDay(d.ms)} title={new Date(d.ms).toDateString()}>
+              <small>{d.wd}</small><span>{d.n}</span>
+            </button>
+          ))}
+        </div>
+        <div className="cal-sub">
+          <span>{zoneLabel()}</span>
+          {!isToday && <button className="linkbtn blue" disabled={busy === 'day'} onClick={() => pickDay(now)}>Today</button>}
+        </div>
         {picker && <Picker snap={snap} color={color} run={run} onClose={() => setPicker(false)} />}
         {monthOpen && <Month day={dayMs} today={todayMs} onPick={pickDay} onClose={() => setMonthOpen(false)} />}
       </div>
