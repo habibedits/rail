@@ -69,6 +69,16 @@ function hideAddProperty() {
     row.style.setProperty('display', 'none', 'important');
     b.setAttribute('data-rail-hidden', '1');
   });
+  // Notion's "Upgrade" and "Open in Notion app" (with its ▾) buttons in the
+  // page header: hidden in Rail. Matched by their exact text, since Notion's
+  // class names are generated.
+  document.querySelectorAll<HTMLElement>('.notion-frame [role="button"]:not([data-rail-hidden]), .notion-topbar [role="button"]:not([data-rail-hidden])').forEach((b) => {
+    const t = b.textContent?.trim();
+    if (t !== 'Upgrade' && t !== 'Open in Notion app') return;
+    const box = b.closest<HTMLElement>('[data-popup-origin]') ?? b;
+    box.style.setProperty('display', 'none', 'important');
+    b.setAttribute('data-rail-hidden', '1');
+  });
 }
 
 function scan() {
