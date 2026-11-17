@@ -1,0 +1,236 @@
+<!doctype html><html><head><meta charset="utf-8">
+<!-- Every Rail feature on one page, in tiles ("bento"). Apple-product-page look:
+     light gray page, white and black tiles, big tight headlines, the real UI
+     cropped inside each tile. Render at 1600x1840 (see README). -->
+<style>
+  :root {
+    --page: #f5f5f7; --tile: #ffffff; --ink: #1d1d1f; --sub: #6e6e73; --hair: rgba(0, 0, 0, 0.08);
+    --night: #000000; --night-sub: #a1a1a6;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--page); color: var(--ink); overflow: hidden;
+    font-family: -apple-system, 'SF Pro Display', 'Inter Display', 'Inter', 'Helvetica Neue', sans-serif;
+    -webkit-font-smoothing: antialiased; font-feature-settings: 'ss01', 'cv11';
+  }
+  .page { padding: 64px 56px 56px; }
+  .head { text-align: center; margin-bottom: 40px; }
+  .head h1 { margin: 0; font-size: 64px; line-height: 1.04; letter-spacing: -0.035em; font-weight: 700; }
+  .head p { margin: 14px auto 0; font-size: 22px; line-height: 1.4; color: var(--sub); letter-spacing: -0.01em; max-width: 900px; }
+
+  .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 18px; }
+  .t {
+    position: relative; overflow: hidden; border-radius: 30px; background: var(--tile);
+    padding: 34px 34px 0; display: flex; flex-direction: column;
+  }
+  .t.dark { background: var(--night); color: #f5f5f7; }
+  .t.dark p { color: var(--night-sub); }
+  .eb { font-size: 15px; font-weight: 600; letter-spacing: -0.005em; margin-bottom: 8px; display: flex; align-items: center; gap: 7px; }
+  .t h2 { margin: 0; font-size: 36px; line-height: 1.08; letter-spacing: -0.03em; font-weight: 700; }
+  .t h2.s { font-size: 30px; }
+  .t p { margin: 10px 0 0; font-size: 17px; line-height: 1.42; color: var(--sub); letter-spacing: -0.01em; max-width: 470px; }
+  .t p b { color: var(--ink); font-weight: 600; }
+  .t.dark p b { color: #f5f5f7; }
+
+  /* Gradient eyebrows, one hue per space */
+  .g-claude { background: linear-gradient(90deg, #d97757, #f0a35e); }
+  .g-notion { background: linear-gradient(90deg, #3a3a3c, #8e8e93); }
+  .g-meet { background: linear-gradient(90deg, #8e5cf7, #c86dd7); }
+  .g-slack { background: linear-gradient(90deg, #e01e5a, #ecb22e); }
+  .g-cal { background: linear-gradient(90deg, #2f7cf6, #36b6e8); }
+  .g-agents { background: linear-gradient(90deg, #f0882b, #e8b33b); }
+  .g-focus { background: linear-gradient(90deg, #e2553f, #f08a5d); }
+  .g-wheel { background: linear-gradient(90deg, #0fa37f, #39c6a0); }
+  .g-keys { background: linear-gradient(90deg, #5e5ce6, #9b8cff); }
+  .g-claude, .g-notion, .g-meet, .g-slack, .g-cal, .g-agents, .g-focus, .g-wheel, .g-keys { -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+  /* A cropped piece of a real Rail panel */
+  .crop {
+    position: absolute; overflow: hidden; border-radius: 16px; background: #f5f5f4;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04), 0 24px 48px -16px rgba(0, 0, 0, 0.22);
+  }
+  .crop iframe { position: absolute; width: 384px; height: 860px; border: 0; transform-origin: 0 0; }
+  .crop.flat { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 12px 30px -14px rgba(0, 0, 0, 0.2); }
+
+  /* Hero */
+  .hero { padding: 46px 48px 0; }
+  .hero .mark { display: flex; align-items: center; gap: 14px; }
+  .hero .logo { width: 54px; height: 54px; border-radius: 14px; background: linear-gradient(160deg, #2c2c2e, #0b0b0c); border: 1px solid #3a3a3c; position: relative; }
+  .hero .logo::after { content: ''; position: absolute; right: 9px; top: 9px; bottom: 9px; width: 10px; border-radius: 4px; background: linear-gradient(180deg, #f0a35e, #d97757 40%, #8e5cf7 75%, #2f7cf6); }
+  .hero h2 { font-size: 60px; letter-spacing: -0.04em; margin-top: 26px; }
+  .hero h2 span { background: linear-gradient(90deg, #f0a35e, #e86b8f 35%, #8e5cf7 65%, #36b6e8); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .hero p { font-size: 20px; max-width: 440px; margin-top: 16px; }
+  .apps { display: flex; gap: 10px; margin-top: 30px; }
+  .app { display: flex; flex-direction: column; align-items: center; gap: 7px; font-size: 11.5px; color: var(--night-sub); }
+  .app { width: 54px; }
+  .app i {
+    width: 50px; height: 50px; border-radius: 13px; display: grid; place-items: center; font-style: normal; font-size: 24px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 6px 16px -6px rgba(0, 0, 0, 0.6);
+  }
+  .hero h2, .hero p, .hero .apps { position: relative; z-index: 1; }
+  .peek { position: absolute; right: -60px; top: 56px; width: 300px; height: 740px; }
+  .peek::before { content: ''; position: absolute; inset: 60px -40px 60px -120px; background: radial-gradient(closest-side, rgba(142, 92, 247, 0.45), rgba(47, 124, 246, 0.18) 60%, transparent); filter: blur(10px); }
+  .peek .crop { left: 0; top: 0; width: 300px; height: 740px; border-radius: 18px 0 0 18px; border-color: #3a3a3c; }
+  .hero .hk { position: absolute; left: 48px; bottom: 40px; display: flex; align-items: center; gap: 12px; font-size: 16px; color: var(--night-sub); }
+
+  .key {
+    display: inline-grid; place-items: center; min-width: 30px; height: 30px; padding: 0 8px; border-radius: 8px;
+    font: 600 15px/1 'Inter', -apple-system, sans-serif; color: var(--ink); background: linear-gradient(#fff, #f2f2f4);
+    border: 1px solid rgba(0, 0, 0, 0.12); box-shadow: 0 1px 0 rgba(0, 0, 0, 0.18), 0 2px 5px -2px rgba(0, 0, 0, 0.15);
+  }
+  .dark .key { color: #f5f5f7; background: linear-gradient(#3a3a3c, #2c2c2e); border-color: #48484a; box-shadow: 0 1px 0 #000, 0 2px 6px -2px #000; }
+
+  /* Keyboard tile */
+  .keys .big { display: flex; gap: 14px; margin-top: 26px; }
+  .keys .big .key { min-width: 92px; height: 92px; font-size: 40px; border-radius: 18px; box-shadow: 0 2px 0 rgba(0, 0, 0, 0.18), 0 14px 26px -12px rgba(0, 0, 0, 0.3); }
+  .keys ul { list-style: none; margin: 30px 0 0; padding: 0; display: grid; gap: 14px; }
+  .keys li { font-size: 17px; line-height: 30px; color: var(--sub); }
+  .keys li .key { margin-right: 3px; vertical-align: 1px; }
+  .keys li .key { height: 26px; min-width: 26px; font-size: 13px; border-radius: 7px; padding: 0 7px; }
+  .keys li b { color: var(--ink); font-weight: 600; margin-right: 2px; }
+
+  /* Privacy tile */
+  .lock { width: 56px; height: 56px; margin-bottom: 18px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+  .chip { font-size: 13px; padding: 5px 11px; border-radius: 999px; background: #1c1c1e; color: #d1d1d6; border: 1px solid #2c2c2e; }
+
+  .foot { text-align: center; margin-top: 30px; font-size: 14px; color: #86868b; }
+</style></head><body>
+<div class="page">
+  <div class="head">
+    <h1>Everything in Rail.</h1>
+    <p>Seven spaces in one slim panel on the edge of your Mac. Here’s what each one does.</p>
+  </div>
+
+  <div class="grid">
+    <!-- Hero ---------------------------------------------------------------->
+    <div class="t dark hero" style="grid-column: span 7; height: 600px;">
+      <div class="mark"><div class="logo"></div></div>
+      <h2>Your workday,<br><span>one swipe away.</span></h2>
+      <p>Claude, Notion, meetings, Slack, your calendar, your coding agents and a focus timer, <b>docked to the right edge of your screen</b>. No more tabs.</p>
+      <div class="apps">
+        <span class="app"><i style="background:linear-gradient(160deg,#f6b38a,#d97757)">✳️</i>Claude</span>
+        <span class="app"><i style="background:linear-gradient(160deg,#fff,#d8d8dc)">📓</i>Notion</span>
+        <span class="app"><i style="background:linear-gradient(160deg,#c9a6ff,#8e5cf7)">🎙️</i>Meetings</span>
+        <span class="app"><i style="background:linear-gradient(160deg,#ff8db0,#e01e5a)">💬</i>Slack</span>
+        <span class="app"><i style="background:linear-gradient(160deg,#8fc4ff,#2f7cf6)">📅</i>Calendar</span>
+        <span class="app"><i style="background:linear-gradient(160deg,#ffd27a,#f0882b)">🤖</i>Agents</span>
+        <span class="app"><i style="background:linear-gradient(160deg,#ffab96,#e2553f)">🍅</i>Focus</span>
+      </div>
+      <div class="hk"><span class="key">⌃</span><span class="key">`</span> slides it in from any app</div>
+      <div class="peek"><div class="crop"><iframe src="../panel.html?space=meetings&live=1" style="transform: scale(0.86); left:0; top:0;"></iframe></div></div>
+    </div>
+
+    <!-- Agents --------------------------------------------------------------->
+    <div class="t" style="grid-column: span 5; height: 600px;">
+      <div class="eb"><span class="g-agents">Agents</span></div>
+      <h2>A buddy for every<br>Claude Code agent.</h2>
+      <p>See what each session is doing, step by step. <b>Allow, deny or answer</b> without opening VS Code.</p>
+      <div class="crop" style="left:34px; right:34px; top:228px; height:420px;">
+        <iframe src="../panel.html?space=agents" style="transform: scale(1.33); left:-1px; top:-38px;"></iframe>
+      </div>
+    </div>
+
+    <!-- Calendar ------------------------------------------------------------->
+    <div class="t" style="grid-column: span 4; height: 760px;">
+      <div class="eb"><span class="g-cal">Calendar</span></div>
+      <h2 class="s">Every calendar.<br>One day.</h2>
+      <p>Work and personal side by side. <b>Drag</b> to move or draw events, RSVP, and <b>Join &amp; transcribe</b>.</p>
+      <div class="crop" style="left:34px; right:34px; top:214px; height:560px;">
+        <iframe src="../panel.html?space=calendar" style="transform: scale(1.0); left:0; top:-28px;"></iframe>
+      </div>
+    </div>
+
+    <!-- Meetings ------------------------------------------------------------->
+    <div class="t" style="grid-column: span 4; height: 760px;">
+      <div class="eb"><span class="g-meet">Meetings</span></div>
+      <h2 class="s">Every recap,<br>action item and transcript.</h2>
+      <p>From Fireflies, with <b>live transcripts</b> of calls in progress and <b>Send to Claude</b>.</p>
+      <div class="crop" style="left:34px; right:34px; top:214px; height:560px;">
+        <iframe src="../panel.html?space=meetings&open=1" style="transform: scale(1.0); left:0; top:-28px;"></iframe>
+      </div>
+    </div>
+
+    <!-- Slack ---------------------------------------------------------------->
+    <div class="t" style="grid-column: span 4; height: 760px;">
+      <div class="eb"><span class="g-slack">Slack</span></div>
+      <h2 class="s">Any chat,<br>one keystroke.</h2>
+      <p>Press <span class="key" style="height:24px;font-size:12px;padding:0 6px">⇧</span> <span class="key" style="height:24px;font-size:12px;padding:0 6px">Space</span> for recent chats and a quick reply. Slack stays <b>silent</b>; unreads wait on its dot.</p>
+      <div class="crop" style="left:34px; right:34px; top:226px; height:548px;">
+        <iframe src="../panel.html?space=slack&switcher=1" style="transform: scale(1.0); left:0; top:-28px;"></iframe>
+      </div>
+    </div>
+
+    <!-- Focus ---------------------------------------------------------------->
+    <div class="t" style="grid-column: span 3; height: 600px;">
+      <div class="eb"><span class="g-focus">Focus</span></div>
+      <h2 class="s">Focus, then play.</h2>
+      <p>Pomodoro, a streak grid, <b>Sudoku</b> and <b>chess puzzles</b>.</p>
+      <div class="crop flat" style="left:30px; right:30px; top:194px; height:420px;">
+        <iframe src="../panel.html?space=focus" style="transform: scale(0.82); left:-14px; top:-30px;"></iframe>
+      </div>
+    </div>
+
+    <!-- Wheel ---------------------------------------------------------------->
+    <div class="t" style="grid-column: span 4; height: 600px;">
+      <div class="eb"><span class="g-wheel">Space wheel</span></div>
+      <h2 class="s">Flick to any space.</h2>
+      <p>Hold the middle mouse button, or <span class="key" style="height:24px;font-size:12px;padding:0 6px">⌥</span>, then nudge and let go.</p>
+      <div class="crop flat" style="left:50%; margin-left:-170px; width:340px; top:212px; height:340px; border-radius:50%; background:#fff;">
+        <iframe src="../panel.html?space=notion&wheel=4" style="transform: scale(1.3); left:-79px; top:-395px;"></iframe>
+      </div>
+    </div>
+
+    <!-- Keyboard ------------------------------------------------------------->
+    <div class="t keys" style="grid-column: span 5; height: 600px;">
+      <div class="eb"><span class="g-keys">Keyboard and gestures</span></div>
+      <h2 class="s">Always one keystroke away.</h2>
+      <div class="big"><span class="key">⌃</span><span class="key">`</span></div>
+      <ul>
+        <li><b>Show or hide Rail</b> from any app</li>
+        <li><span class="key">⌃1</span> to <span class="key">⌃7</span> jump to a space</li>
+        <li><span class="key">⌃</span><span class="key">⌥</span><span class="key">←</span><span class="key">→</span> or a <b>two-finger swipe</b> to move between spaces</li>
+        <li><span class="key">⇧</span><span class="key">Space</span> <b>Slack quick switcher</b></li>
+        <li><span class="key">⌥</span> hold, or the <b>middle mouse button</b>, for the space wheel</li>
+        <li><b>Pin</b> it above every window, or let it slide away</li>
+      </ul>
+    </div>
+
+    <!-- Claude --------------------------------------------------------------->
+    <div class="t" style="grid-column: span 4; height: 360px;">
+      <div class="eb"><span class="g-claude">Claude</span></div>
+      <h2 class="s">claude.ai, always open.</h2>
+      <p>Signed in once and never more than <b>⌃1</b> away.</p>
+      <div class="crop flat" style="left:34px; right:34px; top:170px; height:200px;">
+        <iframe src="../panel.html?space=claude" style="transform: scale(1.0); left:0; top:-110px;"></iframe>
+      </div>
+    </div>
+
+    <!-- Notion --------------------------------------------------------------->
+    <div class="t" style="grid-column: span 4; height: 360px;">
+      <div class="eb"><span class="g-notion">Notion</span></div>
+      <h2 class="s">Your real Notion, re-fit.</h2>
+      <p>Narrow-friendly pages, <b>up and down</b> the page tree, recent pages.</p>
+      <div class="crop flat" style="left:34px; right:34px; top:170px; height:200px;">
+        <iframe src="../panel.html?space=notion" style="transform: scale(1.0); left:0; top:-28px;"></iframe>
+      </div>
+    </div>
+
+    <!-- Privacy -------------------------------------------------------------->
+    <div class="t dark" style="grid-column: span 4; height: 360px;">
+      <svg class="lock" viewBox="0 0 56 56" aria-hidden="true">
+        <defs><linearGradient id="lk" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f5f5f7"/><stop offset="1" stop-color="#8e8e93"/></linearGradient></defs>
+        <path d="M18 25v-6a10 10 0 0 1 20 0v6" fill="none" stroke="url(#lk)" stroke-width="4.5" stroke-linecap="round"/>
+        <rect x="12" y="24" width="32" height="26" rx="7" fill="url(#lk)"/>
+        <circle cx="28" cy="36" r="3.2" fill="#000"/><rect x="26.6" y="37" width="2.8" height="6" rx="1.4" fill="#000"/>
+      </svg>
+      <h2 class="s">Stays on your Mac.</h2>
+      <p>No analytics. Keys in your <b>Keychain</b>. Your accounts never leave your machine.</p>
+      <div class="chips"><span class="chip">🔐 Keychain-encrypted</span><span class="chip">🚫 No analytics</span><span class="chip">🏠 127.0.0.1 only</span><span class="chip">🔇 Silent Slack</span></div>
+    </div>
+  </div>
+  <div class="foot">All names, companies and meetings shown are made up.</div>
+</div>
+</body></html>

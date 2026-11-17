@@ -10,6 +10,12 @@ Press `⌃` `` ` `` anywhere to slide it in or out. Swipe with two fingers on th
 
 ---
 
+## Everything at a glance
+
+<img src="docs/images/bento.png" alt="Every Rail feature on one page: the panel, Agents, Calendar, Meetings, the Slack quick switcher, Focus, the space wheel, keyboard shortcuts, Claude, Notion and privacy" width="100%">
+
+---
+
 ## Seven spaces, one panel
 
 <img src="docs/images/spaces.png" alt="The six spaces: Claude, Notion, Meetings, Slack, Calendar and Focus" width="100%">
@@ -188,7 +194,7 @@ npx vite --config docs/design/vite.config.mts
 In a second terminal:
 
 ```bash
-TZ=America/New_York DESIGN_WAIT=6000 npx electron docs/design/render.cjs docs/images hero=shots/hero.html@1600x900 spaces=shots/spaces.html@2300x980 calendar=shots/calendar.html@1600x1000 meetings=shots/meetings.html@1600x1000 focus=shots/focus.html@1600x1000 notion=shots/notion.html@1600x1000 wheel=shots/wheel.html@1600x1000 switcher=shots/switcher.html@1600x1000
+TZ=America/New_York DESIGN_WAIT=6000 npx electron docs/design/render.cjs docs/images hero=shots/hero.html@1600x900 spaces=shots/spaces.html@2300x980 calendar=shots/calendar.html@1600x1000 meetings=shots/meetings.html@1600x1000 focus=shots/focus.html@1600x1000 notion=shots/notion.html@1600x1000 wheel=shots/wheel.html@1600x1000 switcher=shots/switcher.html@1600x1000 bento=shots/bento.html@1600x2692
 ```
 
 Open `http://127.0.0.1:5181/panel.html?space=calendar` (or `meetings`, `agents`, `focus`, `notion`, `slack`, `claude`) to see a single panel.
