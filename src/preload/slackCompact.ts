@@ -42,6 +42,27 @@ html[data-rail~="narrow"] [data-qa="top-nav-help-button"] { display: none !impor
 .c-message-actions--hover-actions > *:not(:has([data-qa="more_message_actions"])) { display: none !important; }
 .c-message_actions__container .c-message-actions--hover-actions { padding: 1px !important; }
 
+/* Message times: Slack's compact layout keeps a 56px time column on the left
+   of every message, about a fifth of the pane. Drop the column so messages use
+   the full width: the sender's name gets its own line with a small time at the
+   right, and a follow-up message's time shows there only while hovered. */
+html[data-rail~="narrow"] .c-message_kit__gutter--compact:has(> .c-message_kit__gutter__left :is(.p-message_pane_message__compact_timestamp, .p-unreads_view_compact_timestamp)) {
+  position: relative; padding-left: 12px !important; padding-right: 12px !important;
+}
+html[data-rail~="narrow"] .c-message_kit__gutter--compact > .c-message_kit__gutter__left:has(:is(.p-message_pane_message__compact_timestamp, .p-unreads_view_compact_timestamp)) {
+  position: absolute; top: 1px; right: 12px; margin: 0; z-index: 1;
+}
+html[data-rail~="narrow"] :is(.p-message_pane_message__compact_timestamp, .p-unreads_view_compact_timestamp) { width: auto !important; margin: 0 !important; text-align: right; }
+html[data-rail~="narrow"] :is(.p-message_pane_message__compact_timestamp, .p-unreads_view_compact_timestamp) .c-timestamp { font-size: 11px; line-height: 18px; }
+html[data-rail~="narrow"] :is(.p-message_pane_message__compact_timestamp--adjacent, .p-unreads_view_compact_timestamp--adjacent) {
+  padding: 0 6px; border-radius: 6px; background: var(--dt_color-base-pry, rgba(var(--sk_primary_background, 255,255,255), 1));
+}
+html[data-rail~="narrow"] .c-message_kit__gutter--compact:has(> .c-message_kit__gutter__left :is(.p-message_pane_message__compact_timestamp, .p-unreads_view_compact_timestamp)) .c-message_kit__indent { padding-left: 0 !important; }
+html[data-rail~="narrow"] .c-message_kit__gutter--compact:has(> .c-message_kit__gutter__left :is(.p-message_pane_message__compact_timestamp, .p-unreads_view_compact_timestamp)) .c-message__sender {
+  display: block; margin-left: 0 !important; padding-right: 64px;
+}
+html[data-rail~="narrow"] .c-message_kit__gutter--compact:has(> .c-message_kit__gutter__left :is(.p-message_pane_message__compact_timestamp, .p-unreads_view_compact_timestamp)) .c-message_kit__blocks--inline { margin-left: -0.28em; }
+
 /* Huddles and calls: Slack floats its call window (at least 455px wide) over
    the bottom-left corner, which in Rail spills off the pane and covers the
    messages. Dock it as a card across the bottom instead, and shrink the client

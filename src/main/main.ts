@@ -171,10 +171,11 @@ function createSiteView(partition: string, url: string, ownHosts: string[], inPa
   // Right after a relaunch a site's first load can hang before it starts (seen
   // with Slack, whose page then stays blank). Start it again if nothing came.
   let kicks = 0;
+  let ready = false;
+  wc.on('dom-ready', () => { ready = true; });
   const watchdog = () => {
-    if (wc.isDestroyed()) return;
-    const u = wc.getURL();
-    if ((!u || u === 'about:blank') && kicks++ < 3) { wc.loadURL(url); setTimeout(watchdog, 12000); }
+    if (wc.isDestroyed() || ready) return;
+    if (kicks++ < 3) { wc.loadURL(url); setTimeout(watchdog, 12000); }
   };
   setTimeout(watchdog, 12000);
   return view;
