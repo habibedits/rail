@@ -177,6 +177,7 @@ function Body() {
       if (q.get('sweep') === '2') window.dispatchEvent(new PointerEvent('pointerup', { clientX: x, clientY: yAt(14.45) }));
     }, 900);
     if (SPACE === 'meetings' && q.get('open')) click('.mhead', undefined, 500);
+    if (SPACE === 'mail' && q.get('clean')) click('button[aria-label="Clean up with Claude"]', undefined, 600);
     if (SPACE === 'mail') {
       const key = (k: string) => window.dispatchEvent(new KeyboardEvent('keydown', { key: k }));
       const n = Number(q.get('open') ?? q.get('sel') ?? 0);

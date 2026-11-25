@@ -173,6 +173,30 @@ const mailDetail = (account: string, id: string) => {
   return { account, id, subject: t.subject, messages, unsubscribe: t.list, webUrl: 'https://mail.google.com' };
 };
 
+// ---- Mail clean-up (&clean=idle|scanning|thinking|ready|done opens it) -------
+
+const cl = (id: string, name: string, email: string, emails: number, unread: number, category: string, unsubscribe: boolean, action: string, reason: string) =>
+  ({ id: `${HOME} ${email}`, account: HOME, email, name, emails, unread, category, unsubscribe, subjects: [], action, reason });
+const cleanItems = [
+  cl('1', 'Medium Daily Digest', 'noreply@medium.com', 64, 64, 'updates', true, 'unsubscribe', 'Daily digest, all 64 unread'),
+  cl('2', 'Morning Brew', 'crew@morningbrew.com', 55, 53, 'promotions', true, 'unsubscribe', 'Daily newsletter, 53 of 55 unread'),
+  cl('3', 'Old Navy', 'oldnavy@email.oldnavy.com', 42, 41, 'promotions', true, 'unsubscribe', 'Retail promotions, 41 of 42 unread'),
+  cl('4', 'Sephora', 'beauty@e.sephora.com', 36, 36, 'promotions', true, 'unsubscribe', 'Beauty promotions, none of 36 opened'),
+  cl('5', 'Uber Eats', 'uber@uber.com', 31, 29, 'promotions', true, 'unsubscribe', 'Delivery promos, almost never opened'),
+  cl('6', 'Amazon.com', 'shipment-tracking@amazon.com', 18, 15, 'updates', false, 'archive', 'Shipping updates, no unsubscribe option'),
+  cl('7', 'Chase', 'no.reply.alerts@chase.com', 15, 12, 'updates', false, 'keep', 'Bank statements and payment alerts'),
+  cl('8', 'GitHub', 'notifications@github.com', 40, 38, 'updates', true, 'keep', 'Your repo activity and security alerts'),
+];
+function cleanupState() {
+  const phase = params.get('clean') ?? 'idle';
+  return {
+    phase, scanned: 412, by: 'claude', note: null, error: null,
+    done: phase === 'scanning' ? 268 : phase === 'applying' ? 4 : 0, total: phase === 'scanning' ? 412 : phase === 'thinking' ? 64 : phase === 'applying' ? 6 : 0,
+    items: phase === 'ready' ? cleanItems : [],
+    result: phase === 'done' ? { unsubscribed: 4, archived: 246, links: [{ name: 'Uber Eats', url: 'https://example.com/unsubscribe' }], canUndo: true } : null,
+  };
+}
+
 // ---- The stand-in bridge --------------------------------------------------
 
 const ok = (data: unknown) => Promise.resolve({ ok: true, data });
@@ -219,6 +243,7 @@ const state = {
     return () => {};
   },
   mail: (req: { op: string; account?: string; id?: string }) => {
+    if (req.op.startsWith('cleanup')) return ok(cleanupState());
     switch (req.op) {
       case 'open': return ok(mailDetail(req.account!, req.id!));
       case 'senderCount': return ok(3);
@@ -228,6 +253,7 @@ const state = {
     }
   },
   onMail: () => () => {},
+  onCleanup: () => () => {},
   focus: () => Promise.resolve(focusSnap),
   onFocus: () => () => {},
   puzzle: () => ok({ id: 'demo', fen: 'r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4', solution: ['h5f7'], rating: 1184, themes: ['mateIn1'], lastMove: 'g8f6' }),

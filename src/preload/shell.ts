@@ -29,6 +29,11 @@ contextBridge.exposeInMainWorld('rail', {
     ipcRenderer.on('rail:mail', listener);
     return () => ipcRenderer.removeListener('rail:mail', listener);
   },
+  onCleanup: (cb: (st: unknown) => void) => {
+    const listener = (_e: IpcRendererEvent, st: unknown) => cb(st);
+    ipcRenderer.on('rail:cleanup', listener);
+    return () => ipcRenderer.removeListener('rail:cleanup', listener);
+  },
   onAgents: (cb: (snap: unknown) => void) => {
     const listener = (_e: IpcRendererEvent, snap: unknown) => cb(snap);
     ipcRenderer.on('rail:agents', listener);

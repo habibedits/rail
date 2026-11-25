@@ -56,7 +56,7 @@ export const NewChat = () => (<svg {...base}><path d="M8 3.5H4.5a1 1 0 0 0-1 1v7
 export const More = () => (<svg {...base}><circle cx="4" cy="8" r=".6" fill="currentColor" /><circle cx="8" cy="8" r=".6" fill="currentColor" /><circle cx="12" cy="8" r=".6" fill="currentColor" /></svg>);
 
 // Mail actions, on the same 24px grid as the space symbols.
-export function MailIcon({ id, size = 17 }: { id: 'reply' | 'archive' | 'trash' | 'block' | 'compose' | 'person' | 'search' | 'check' | 'paperclip'; size?: number }) {
+export function MailIcon({ id, size = 17 }: { id: 'reply' | 'archive' | 'trash' | 'block' | 'compose' | 'person' | 'search' | 'check' | 'paperclip' | 'sparkle'; size?: number }) {
   const p = { ...sym, width: size, height: size };
   switch (id) {
     case 'reply': return <svg {...p}><path d="M20 19v-4a6 6 0 0 0-6-6H4" /><path d="m9 14-5-5 5-5" /></svg>;
@@ -67,6 +67,7 @@ export function MailIcon({ id, size = 17 }: { id: 'reply' | 'archive' | 'trash' 
     case 'person': return <svg {...p}><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>;
     case 'search': return <svg {...p}><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>;
     case 'check': return <svg {...p}><path d="m5 12 5 5 9-10" /></svg>;
+    case 'sparkle': return <svg {...p}><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z" /><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" /></svg>;
     case 'paperclip': return <svg {...p}><path d="m21 11-8.5 8.5a5 5 0 0 1-7-7L14 4a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4L15.5 7" /></svg>;
   }
 }

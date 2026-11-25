@@ -673,24 +673,150 @@ export async function unblock(account: string, filterId: string) {
 
 // List-Unsubscribe (RFC 2369) and one-click unsubscribe (RFC 8058).
 async function unsubscribe(account: string, id: string): Promise<BlockResult['unsubscribed']> {
+  const r = await unsubscribeQuietly(account, id);
+  if (r.status === 'link') { await shell.openExternal(r.url); return 'browser'; }
+  return r.status;
+}
+
+// Unsubscribes where it can be done from here (one-click POST, or an email to
+// the list's unsubscribe address). A sender that only offers a web page comes
+// back as a link to open, so a bulk clean-up doesn't open dozens of tabs.
+async function unsubscribeQuietly(account: string, id: string): Promise<{ status: 'done' | 'none' } | { status: 'link'; url: string }> {
   const t = await api<GThread>(account, `/threads/${id}?format=metadata&metadataHeaders=List-Unsubscribe&metadataHeaders=List-Unsubscribe-Post`);
   const m = [...(t.messages ?? [])].reverse().find((x) => header(x, 'List-Unsubscribe'));
-  if (!m) return 'none';
+  if (!m) return { status: 'none' };
   const links = [...header(m, 'List-Unsubscribe').matchAll(/<([^>]+)>/g)].map((x) => x[1].trim());
   const https = links.find((l) => /^https:\/\//i.test(l));
   const mailto = links.find((l) => /^mailto:/i.test(l));
   if (https && /One-Click/i.test(header(m, 'List-Unsubscribe-Post'))) {
     const r = await fetch(https, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'List-Unsubscribe=One-Click' }).catch(() => null);
-    if (r?.ok) return 'done';
+    if (r?.ok) return { status: 'done' };
   }
   if (mailto) {
     const u = new URL(mailto);
     const to = decodeURIComponent(u.pathname);
     if (/@/.test(to)) {
       await compose(account, to, u.searchParams.get('subject') ?? 'unsubscribe', u.searchParams.get('body') ?? 'unsubscribe');
-      return 'done';
+      return { status: 'done' };
     }
   }
-  if (https) { await shell.openExternal(https); return 'browser'; }
-  return 'none';
+  if (https) return { status: 'link', url: https };
+  return { status: 'none' };
+}
+
+// ---------------------------------------------------------------------------
+// Inbox clean-up: who fills the inbox, and clearing them out in bulk
+// ---------------------------------------------------------------------------
+
+export interface CleanupSender {
+  id: string; // `${account} ${email}`
+  account: string;
+  email: string;
+  name: string;
+  emails: number; // inbox conversations in the window
+  unread: number;
+  category: 'promotions' | 'social' | 'updates' | 'forums' | 'primary';
+  unsubscribe: boolean; // has a List-Unsubscribe header
+  wrote: boolean; // you've emailed them
+  starred: boolean;
+  last: number;
+  subjects: string[];
+  threads: string[];
+}
+
+const SCAN_DAYS = 90;
+const SCAN_MAX = 400; // inbox conversations per account
+
+/** Every sender in the inbox over the last 90 days, with how much of their mail you read. */
+export async function scanSenders(onProgress: (done: number, total: number) => void): Promise<CleanupSender[]> {
+  const accounts = loadAccounts().map((a) => a.email).filter((e) => !isHidden(e));
+  const ids: { account: string; id: string }[] = [];
+  for (const account of accounts) {
+    let pageToken = '';
+    let n = 0;
+    do {
+      const params = new URLSearchParams({ q: `in:inbox newer_than:${SCAN_DAYS}d`, maxResults: '100' });
+      if (pageToken) params.set('pageToken', pageToken);
+      const r = await api<{ threads?: { id: string }[]; nextPageToken?: string }>(account, `/threads?${params}`);
+      for (const t of r.threads ?? []) { if (n++ < SCAN_MAX) ids.push({ account, id: t.id }); }
+      pageToken = n < SCAN_MAX ? r.nextPageToken ?? '' : '';
+    } while (pageToken);
+  }
+
+  const by = new Map<string, CleanupSender>();
+  let done = 0;
+  onProgress(0, ids.length);
+  await pool(ids, 8, async ({ account, id }) => {
+    const t = await api<GThread>(account, `/threads/${id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=List-Unsubscribe`).catch(() => null);
+    done += 1;
+    if (done % 10 === 0 || done === ids.length) onProgress(done, ids.length);
+    const msgs = t?.messages ?? [];
+    const theirs = [...msgs].reverse().find((m) => !m.labelIds?.includes('SENT'));
+    if (!theirs) return;
+    const from = parseAddress(header(theirs, 'From'));
+    if (!/@/.test(from.email)) return;
+    const key = `${account} ${from.email}`;
+    let x = by.get(key);
+    if (!x) {
+      x = { id: key, account, email: from.email, name: from.name, emails: 0, unread: 0, category: 'primary', unsubscribe: false, wrote: false, starred: false, last: 0, subjects: [], threads: [] };
+      by.set(key, x);
+    }
+    const labels = new Set(msgs.flatMap((m) => m.labelIds ?? []));
+    x.emails += 1;
+    x.threads.push(id);
+    if (labels.has('UNREAD')) x.unread += 1;
+    if (labels.has('STARRED')) x.starred = true;
+    if (header(theirs, 'List-Unsubscribe')) x.unsubscribe = true;
+    const cat = labels.has('CATEGORY_PROMOTIONS') ? 'promotions' : labels.has('CATEGORY_SOCIAL') ? 'social' : labels.has('CATEGORY_UPDATES') ? 'updates' : labels.has('CATEGORY_FORUMS') ? 'forums' : null;
+    if (cat) x.category = cat;
+    const date = Number(theirs.internalDate ?? 0);
+    if (date > x.last) x.last = date;
+    const subj = header(theirs, 'Subject').trim();
+    if (subj && x.subjects.length < 4 && !x.subjects.includes(subj)) x.subjects.push(subj.slice(0, 120));
+  });
+
+  // Have you ever written to them? Asked only for senders that could be clutter.
+  const maybe = [...by.values()].filter((x) => !x.starred && (x.unsubscribe || x.category !== 'primary' || x.emails >= 3));
+  await pool(maybe, 6, async (x) => {
+    const params = new URLSearchParams({ q: `in:sent to:${x.email}`, maxResults: '1' });
+    const r = await api<{ messages?: unknown[] }>(x.account, `/messages?${params}`).catch(() => ({ messages: [] }));
+    x.wrote = (r.messages?.length ?? 0) > 0;
+  });
+  return [...by.values()].sort((a, b) => b.emails - a.emails);
+}
+
+export interface CleanupDone {
+  unsubscribed: number;
+  archived: number;
+  links: { name: string; url: string }[]; // senders whose unsubscribe is a web page
+  undo: Undo[];
+}
+
+/** Unsubscribes (where asked) and takes each sender's mail out of the inbox. */
+export async function cleanupApply(
+  items: { account: string; email: string; name: string; threads: string[]; unsubscribe: boolean }[],
+  onProgress: (done: number, total: number) => void,
+): Promise<CleanupDone> {
+  const out: CleanupDone = { unsubscribed: 0, archived: 0, links: [], undo: [] };
+  const archivedBy = new Map<string, string[]>();
+  let done = 0;
+  onProgress(0, items.length);
+  for (const it of items) {
+    if (it.unsubscribe && it.threads[0]) {
+      const r = await unsubscribeQuietly(it.account, it.threads[0]).catch(() => ({ status: 'none' as const }));
+      if (r.status === 'done') out.unsubscribed += 1;
+      else if (r.status === 'link') out.links.push({ name: it.name, url: r.url });
+    }
+    const ids = [...new Set([...it.threads, ...(await fromSender(it.account, it.email).catch(() => []))])];
+    if (ids.length) {
+      dropFromFeed(it.account, ids);
+      await pool(ids, 5, (tid) => api(it.account, `/threads/${tid}/modify`, { method: 'POST', body: { removeLabelIds: ['INBOX'] } }).catch(() => undefined));
+      archivedBy.set(it.account, [...(archivedBy.get(it.account) ?? []), ...ids]);
+      out.archived += ids.length;
+    }
+    onProgress(++done, items.length);
+  }
+  for (const [account, ids] of archivedBy) out.undo.push({ kind: 'archive', account, ids });
+  void refresh();
+  return out;
 }

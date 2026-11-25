@@ -49,6 +49,7 @@ declare global {
       onWheel: (cb: (w: WheelState) => void) => () => void;
       mail: (req: MailReq) => Promise<FFRes & { needsSignIn?: boolean }>;
       onMail: (cb: (snap: MailSnapshot) => void) => () => void;
+      onCleanup?: (cb: (st: CleanupState) => void) => () => void;
     };
   }
 }
@@ -355,7 +356,26 @@ export type MailReq =
   | { op: 'undo'; undo: MailUndo }
   | { op: 'blocked' }
   | { op: 'unblock'; account: string; filterId: string }
-  | { op: 'openUrl'; url: string };
+  | { op: 'openUrl'; url: string }
+  | { op: 'cleanupGet' | 'cleanupStart' | 'cleanupApply' | 'cleanupUndo' | 'cleanupClose' }
+  | { op: 'cleanupChoose'; id: string; action: CleanupAction };
+
+// Inbox clean-up with Claude (mirrors src/main/mailCleanup.ts).
+export type CleanupAction = 'unsubscribe' | 'archive' | 'keep';
+export interface CleanupItem {
+  id: string; account: string; email: string; name: string;
+  emails: number; unread: number; category: 'promotions' | 'social' | 'updates' | 'forums' | 'primary';
+  unsubscribe: boolean; subjects: string[]; action: CleanupAction; reason: string;
+}
+export interface CleanupState {
+  phase: 'idle' | 'scanning' | 'thinking' | 'ready' | 'applying' | 'done' | 'error';
+  done: number; total: number; scanned: number;
+  items: CleanupItem[];
+  by: 'claude' | 'rules' | null;
+  note: string | null;
+  error: string | null;
+  result: { unsubscribed: number; archived: number; links: { name: string; url: string }[]; canUndo: boolean } | null;
+}
 
 export async function mail<T = MailSnapshot>(req: MailReq): Promise<T> {
   const res = await window.rail.mail(req);

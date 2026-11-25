@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { mail, MailAccount, MailBlocked, MailDetail, MailMessage, MailSnapshot, MailThread, MailUndo, useRailState } from './rail';
+import { CleanupAction, CleanupItem, CleanupState, mail, MailAccount, MailBlocked, MailDetail, MailMessage, MailSnapshot, MailThread, MailUndo, useRailState } from './rail';
 import { Back, MailIcon, Reload } from './icons';
 
 // The Mail space: every Gmail account in one feed, newest first. The chips
@@ -164,6 +164,14 @@ function Inbox({ snap, setSnap }: { snap: MailSnapshot; setSnap: (s: MailSnapsho
   const openSearch = useCallback(() => { setOpenKey(null); setSearchOpen(true); setTimeout(() => searchRef.current?.focus(), 30); }, []);
   const closeSearch = useCallback(() => { setQuery(''); setSearchOpen(false); }, []);
   const feedRef = useRef<HTMLDivElement>(null);
+  // Inbox clean-up with Claude: its state lives in the main process, so it
+  // keeps running (and stays ready) while you're elsewhere.
+  const [cleanOpen, setCleanOpen] = useState(false);
+  const [clean, setClean] = useState<CleanupState | null>(null);
+  useEffect(() => {
+    mail<CleanupState>({ op: 'cleanupGet' }).then(setClean).catch(() => {});
+    return window.rail?.onCleanup?.(setClean);
+  }, []);
 
   const accounts = snap.accounts;
   const color = useCallback((email: string) => COLORS[Math.max(0, accounts.findIndex((a) => a.email === email)) % COLORS.length], [accounts]);
@@ -260,6 +268,7 @@ function Inbox({ snap, setSnap }: { snap: MailSnapshot; setSnap: (s: MailSnapsho
 
   // Keyboard: J/K move, Enter opens, Esc goes back; R E D B act; 1–9 pick an account; / searches; C writes.
   useEffect(() => {
+    if (cleanOpen) return; // the clean-up screen has no single-key shortcuts
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const typing = /^(INPUT|TEXTAREA)$/.test((document.activeElement as HTMLElement | null)?.tagName ?? '');
@@ -297,7 +306,7 @@ function Inbox({ snap, setSnap }: { snap: MailSnapshot; setSnap: (s: MailSnapsho
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [sheet, openKey, sel, list, shownAccounts, byKey, act, query, searchOpen, openSearch, closeSearch]);
+  }, [sheet, openKey, sel, list, shownAccounts, byKey, act, query, searchOpen, openSearch, closeSearch, cleanOpen]);
 
   useLayoutEffect(() => {
     if (!openKey && sel) feedRef.current?.querySelector('.ml-row.sel')?.scrollIntoView({ block: 'nearest' });
@@ -314,6 +323,9 @@ function Inbox({ snap, setSnap }: { snap: MailSnapshot; setSnap: (s: MailSnapsho
     groups[groups.length - 1].items.push(t);
   }
 
+  if (cleanOpen && clean) return <div className="mail"><Cleanup st={clean} set={setClean} onClose={() => setCleanOpen(false)} /></div>;
+
+  const cleanBusy = clean && ['scanning', 'thinking', 'applying'].includes(clean.phase);
   return (
     <div className="mail">
       <div className={`ml-screen ${openThread ? 'reading' : ''}`}>
@@ -326,8 +338,16 @@ function Inbox({ snap, setSnap }: { snap: MailSnapshot; setSnap: (s: MailSnapsho
             </button>
             <button className={`round ${searchOpen ? 'active' : ''}`} title="Search all mail  /" aria-label="Search all mail" aria-pressed={searchOpen} onClick={() => (searchOpen ? closeSearch() : openSearch())}><MailIcon id="search" size={15} /></button>
             <button className="round" title="New email  C" aria-label="New email" onClick={() => setSheet({ kind: 'compose' })}><MailIcon id="compose" size={15} /></button>
+            <button className={`round ${cleanBusy || clean?.phase === 'ready' ? 'active' : ''}`} title="Clean up your inbox with Claude" aria-label="Clean up with Claude" onClick={() => setCleanOpen(true)}><MailIcon id="sparkle" size={15} /></button>
             <button className="round" title="Accounts and blocked senders" aria-label="Accounts" onClick={() => setSheet({ kind: 'accounts' })}><MailIcon id="person" size={15} /></button>
           </div>
+          {clean && (cleanBusy || clean.phase === 'ready') && (
+            <button className="cl-banner" onClick={() => setCleanOpen(true)}>
+              <span className={`cl-spark ${cleanBusy ? 'busy' : ''}`}><MailIcon id="sparkle" size={14} /></span>
+              <span className="cl-btxt">{clean.phase === 'ready' ? `Clean-up ready: ${clean.items.filter((x) => x.action !== 'keep').length} senders to clear out` : clean.phase === 'thinking' ? 'Claude is reviewing your senders…' : clean.phase === 'applying' ? 'Cleaning up your inbox…' : 'Looking through your inbox…'}</span>
+              <span className="cl-go">{clean.phase === 'ready' ? 'Review' : ''}</span>
+            </button>
+          )}
           {searchOpen && (
             <label className="searchbar ml-search">
               <MailIcon id="search" size={14} />
@@ -828,5 +848,155 @@ function AccountsSheet({ accounts, builtIn, color, setSnap, onClose, onToast }: 
         <button className="btn" onClick={onClose}>Done</button>
       </div>
     </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Inbox clean-up with Claude
+// ---------------------------------------------------------------------------
+
+const CATEGORY: Record<CleanupItem['category'], string> = { promotions: 'Promotions', social: 'Social', updates: 'Updates', forums: 'Forums', primary: 'Primary' };
+const ACTIONS: { id: CleanupAction; label: string }[] = [{ id: 'unsubscribe', label: 'Unsubscribe' }, { id: 'archive', label: 'Clear out' }, { id: 'keep', label: 'Keep' }];
+
+function Cleanup({ st, set, onClose }: { st: CleanupState; set: (s: CleanupState) => void; onClose: () => void }) {
+  const [showKept, setShowKept] = useState(false);
+  const [error, setError] = useState('');
+  const run = (req: Parameters<typeof mail>[0]) => { setError(''); mail<CleanupState>(req).then(set).catch((e) => setError(e.message)); };
+  const busy = ['scanning', 'thinking', 'applying'].includes(st.phase);
+  const unsub = st.items.filter((x) => x.action === 'unsubscribe');
+  const clear = st.items.filter((x) => x.action === 'archive');
+  const keep = st.items.filter((x) => x.action === 'keep');
+  const leaving = [...unsub, ...clear].reduce((n, x) => n + x.emails, 0);
+  const pct = st.total ? Math.round((st.done / st.total) * 100) : 0;
+
+  const list = (title: string, items: CleanupItem[]) => items.length > 0 && (
+    <>
+      <div className="sec-h">{title} · {items.length}</div>
+      <div className="group">{items.map((x) => <CleanRow key={x.id} x={x} onChoose={(a) => run({ op: 'cleanupChoose', id: x.id, action: a })} />)}</div>
+    </>
+  );
+
+  return (
+    <div className="cl">
+      <div className="cl-nav">
+        <button className="pill-btn back" onClick={onClose}>‹ Mail</button>
+        <span className="spacer" />
+        {(st.phase === 'ready' || st.phase === 'error') && <button className="linkbtn muted" onClick={() => run({ op: 'cleanupClose' })}>Start over</button>}
+      </div>
+      <div className="big-title cl-title"><h1>Clean Up</h1></div>
+      {error && <p className="error pad">{error}</p>}
+
+      <div className="cl-scroll">
+        {st.phase === 'idle' && (
+          <div className="cl-card cl-hero">
+            <div className="cl-tile"><MailIcon id="sparkle" size={24} /></div>
+            <p className="t">Clear out the clutter</p>
+            <p className="muted">Claude looks at who’s been filling your inbox over the last 90 days and suggests who to <b>unsubscribe</b> from and what to <b>clear out</b>. Nothing changes until you say so.</p>
+            <button className="btn primary cl-start" onClick={() => run({ op: 'cleanupStart' })}>Start Clean-Up</button>
+            <p className="cl-fine">Claude sees senders, counts and a few subject lines, never what the emails say. It runs through Claude Code on this Mac. People you’ve written to and starred mail are left alone.</p>
+          </div>
+        )}
+
+        {busy && (
+          <div className="cl-card cl-progress">
+            <div className="cl-spinner"><MailIcon id="sparkle" size={22} /></div>
+            <p className="t">{st.phase === 'scanning' ? 'Looking through your inbox' : st.phase === 'thinking' ? 'Claude is reviewing your senders' : 'Cleaning up'}</p>
+            <p className="muted">
+              {st.phase === 'scanning' ? (st.total ? `${st.done} of ${st.total} conversations` : 'Finding conversations…')
+                : st.phase === 'thinking' ? `${st.total} senders that could be clutter`
+                : `${st.done} of ${st.total} senders`}
+            </p>
+            {st.phase !== 'thinking' && <div className="cl-bar"><i style={{ width: `${pct}%` }} /></div>}
+            <p className="cl-fine">You can leave Mail. Rail lets you know when it’s ready.</p>
+          </div>
+        )}
+
+        {st.phase === 'ready' && (
+          <>
+            <div className="cl-card cl-sum">
+              <div className="cl-stats">
+                <div><b>{unsub.length}</b><span>Unsubscribe</span></div>
+                <div><b>{clear.length}</b><span>Clear out</span></div>
+                <div><b>{leaving.toLocaleString()}</b><span>Emails out</span></div>
+              </div>
+              <p className="cl-by">{st.by === 'claude' ? `Suggested by Claude from ${st.scanned.toLocaleString()} conversations. Change any of them below.` : `Suggested by Rail’s own rules. ${st.note ?? ''}`}</p>
+            </div>
+            {st.items.length === 0 && <p className="muted pad">Nothing in your inbox looks like clutter.</p>}
+            {list('Unsubscribe', unsub)}
+            {list('Clear Out', clear)}
+            {keep.length > 0 && (
+              <>
+                <button className="cl-more" onClick={() => setShowKept(!showKept)}>{showKept ? 'Hide' : 'Show'} {keep.length} to keep <span className={`chev ${showKept ? 'open' : ''}`}>›</span></button>
+                {showKept && <div className="group">{keep.map((x) => <CleanRow key={x.id} x={x} onChoose={(a) => run({ op: 'cleanupChoose', id: x.id, action: a })} />)}</div>}
+              </>
+            )}
+          </>
+        )}
+
+        {st.phase === 'done' && st.result && (
+          <div className="cl-card cl-hero">
+            <div className="cl-tile ok"><MailIcon id="check" size={24} /></div>
+            <p className="t">Inbox cleaned up</p>
+            <p className="muted">
+              {st.result.unsubscribed > 0 && <>Unsubscribed from <b>{st.result.unsubscribed}</b> sender{st.result.unsubscribed === 1 ? '' : 's'}. </>}
+              <b>{st.result.archived.toLocaleString()}</b> email{st.result.archived === 1 ? '' : 's'} moved out of your inbox (they’re still in All Mail).
+            </p>
+            <div className="cl-done-btns">
+              {st.result.canUndo && <button className="btn" onClick={() => run({ op: 'cleanupUndo' })}>Put Them Back</button>}
+              <button className="btn primary" onClick={() => { run({ op: 'cleanupClose' }); onClose(); }}>Done</button>
+            </div>
+          </div>
+        )}
+        {st.phase === 'done' && st.result && st.result.links.length > 0 && (
+          <>
+            <div className="sec-h">Finish on their website · {st.result.links.length}</div>
+            <div className="group">
+              {st.result.links.map((l) => (
+                <div key={l.url} className="cl-link">
+                  <span>{l.name}</span>
+                  <button className="linkbtn blue" onClick={() => void mail({ op: 'openUrl', url: l.url })}>Unsubscribe ↗</button>
+                </div>
+              ))}
+            </div>
+            <p className="cl-fine pad">These senders only unsubscribe on their own page. Their mail is already out of your inbox.</p>
+          </>
+        )}
+
+        {st.phase === 'error' && (
+          <div className="cl-card cl-hero">
+            <p className="t">Couldn’t finish the clean-up</p>
+            <p className="error">{st.error}</p>
+            <button className="btn primary cl-start" onClick={() => run({ op: 'cleanupStart' })}>Try Again</button>
+          </div>
+        )}
+      </div>
+
+      {st.phase === 'ready' && (unsub.length + clear.length > 0) && (
+        <div className="cl-foot">
+          <button className="btn primary cl-apply" onClick={() => run({ op: 'cleanupApply' })}>
+            {unsub.length ? `Unsubscribe ${unsub.length} · ` : ''}Clear {leaving.toLocaleString()} Email{leaving === 1 ? '' : 's'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CleanRow({ x, onChoose }: { x: CleanupItem; onChoose: (a: CleanupAction) => void }) {
+  return (
+    <div className="cl-row">
+      <div className="ml-av">{initials(x.name)}</div>
+      <div className="cl-rb">
+        <div className="cl-name"><b>{x.name}</b><span>{x.email}</span></div>
+        <div className="cl-meta">{x.emails} email{x.emails === 1 ? '' : 's'} · {x.unread === x.emails ? 'none opened' : `${x.unread} unread`} · {CATEGORY[x.category]}</div>
+        {x.reason && <div className="cl-why">{x.reason}</div>}
+        <div className="cl-seg" role="radiogroup" aria-label={`What to do with ${x.name}`}>
+          {ACTIONS.map((a) => (
+            <button key={a.id} role="radio" aria-checked={x.action === a.id} className={x.action === a.id ? `on ${a.id}` : ''} disabled={a.id === 'unsubscribe' && !x.unsubscribe}
+              title={a.id === 'unsubscribe' && !x.unsubscribe ? 'This sender has no unsubscribe link' : undefined} onClick={() => onChoose(a.id)}>{a.label}</button>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }

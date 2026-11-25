@@ -29,6 +29,7 @@ import * as ncal from './notionCal';
 import * as focusTimer from './focus';
 import * as agentHub from './agents';
 import * as gmail from './gmail';
+import * as cleanup from './mailCleanup';
 import { execFile } from 'node:child_process';
 
 // ---------------------------------------------------------------------------
@@ -1328,6 +1329,24 @@ function startMail() {
       if (n !== mailUnread) { mailUnread = n; broadcast(); }
     },
   });
+  // Inbox clean-up with Claude (see mailCleanup.ts): runs in the background,
+  // with a notification when Claude's suggestions are ready.
+  cleanup.init({
+    dataDir: app.getPath('userData'),
+    onChange: (st) => { if (mailView && !mailView.webContents.isDestroyed()) mailView.webContents.send('rail:cleanup', st); },
+    onReady: (st) => {
+      const looking = shown && win?.isVisible() && SPACES[active].id === 'mail';
+      if (looking || !Notification.isSupported()) return;
+      const out = st.items.filter((x) => x.action !== 'keep').length;
+      const n = new Notification({
+        title: 'Inbox clean-up is ready',
+        body: out ? `${st.by === 'claude' ? 'Claude' : 'Rail'} suggests clearing out ${out} sender${out === 1 ? '' : 's'}. Review before anything changes.` : 'Nothing looks like clutter.',
+        silent: true,
+      });
+      n.on('click', () => { if (!shown || !win.isVisible()) showRail(); goTo(spaceIndex('mail')); });
+      n.show();
+    },
+  });
 }
 
 type MailReq =
@@ -1348,7 +1367,9 @@ type MailReq =
   | { op: 'undo'; undo: gmail.Undo }
   | { op: 'blocked' }
   | { op: 'unblock'; account: string; filterId: string }
-  | { op: 'openUrl'; url: string };
+  | { op: 'openUrl'; url: string }
+  | { op: 'cleanupGet' | 'cleanupStart' | 'cleanupApply' | 'cleanupUndo' | 'cleanupClose' }
+  | { op: 'cleanupChoose'; id: string; action: cleanup.CleanupAction };
 
 const str = (v: unknown, max = 2000) => String(v ?? '').slice(0, max);
 const gid = (v: unknown) => { const s = str(v, 64); if (!/^[0-9a-zA-Z_-]+$/.test(s)) throw new Error('Bad id'); return s; };
@@ -1387,6 +1408,15 @@ async function handleMail(req: MailReq): Promise<unknown> {
     case 'blocked': return gmail.blocked();
     case 'unblock': await gmail.unblock(str(req.account, 320), gid(req.filterId)); return gmail.blocked();
     case 'openUrl': if (/^https:\/\//.test(str(req.url))) void shell.openExternal(str(req.url)); return true;
+    case 'cleanupGet': return cleanup.snapshot();
+    case 'cleanupStart': void cleanup.start(); return cleanup.snapshot();
+    case 'cleanupChoose':
+      if (!['unsubscribe', 'archive', 'keep'].includes(req.action)) throw new Error('Bad action');
+      cleanup.choose(str(req.id, 400), req.action);
+      return cleanup.snapshot();
+    case 'cleanupApply': void cleanup.apply(); return cleanup.snapshot();
+    case 'cleanupUndo': await cleanup.undoAll(); return cleanup.snapshot();
+    case 'cleanupClose': cleanup.close(); return cleanup.snapshot();
   }
   return gmail.snapshot();
 }

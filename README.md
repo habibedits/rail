@@ -28,7 +28,7 @@ Press `⌃` `` ` `` anywhere to slide it in or out. Swipe with two fingers on th
 | 📓 | **Notion** | `⌃2` | Your real Notion, re-fit for a narrow pane. |
 | 🎙️ | **Meetings** | `⌃3` | Fireflies recaps, action items, transcripts and live calls. |
 | 💬 | **Slack** | `⌃4` | Slack, completely silent. Unreads show as a count on its tab. |
-| ✉️ | **Mail** | `⌃5` | Every Gmail account in one feed. Reply, Archive, Delete, Block. |
+| ✉️ | **Mail** | `⌃5` | Every Gmail account in one feed. Reply, Archive, Delete, Block, and Clean Up with Claude. |
 | 📅 | **Calendar** | `⌃6` | Today from every Notion Calendar account, in one view. |
 | 🤖 | **Agents** | `⌃7` | Every Claude Code session as a little buddy: what it's doing, Allow, answers. |
 | 🍅 | **Focus** | `⌃8` | A Pomodoro timer, a streak grid, Sudoku and chess puzzles. |
@@ -56,6 +56,12 @@ Press `⌃` `` ` `` anywhere to slide it in or out. Swipe with two fingers on th
   - **Reply** sends from the account the email came to. Tap **Thanks!**, **Sounds good 👍** or **I'll get back to you tomorrow** to fill it in, then `⌘↵` to send.
   - **Delete** moves the conversation to Gmail's Trash. **Archive** takes it out of the inbox. Both show **Undo** for a few seconds.
   - **Block** adds a Gmail filter that sends the sender's future mail straight to Trash, so it holds on your phone too. It can also move their earlier emails to Trash and unsubscribe you from mailing lists. Unblock anyone under **Accounts**.
+- **Clean Up with Claude** (the ✦ button): Claude helps clear the clutter out of your inbox.
+  - Rail looks through the last 90 days of every inbox and finds who's filling it: how many emails, how many you never opened, Gmail's category, and whether there's an unsubscribe link.
+  - Senders that could be clutter go to **Claude**, which suggests **Unsubscribe**, **Clear out** (archive) or **Keep** for each, with a one-line reason. People you've written to and anything you've starred are never suggested. Bank, security, travel and receipt mail is kept.
+  - You review and change any of them, then one button unsubscribes and moves their mail out of the inbox. **Put Them Back** undoes the archiving. Senders that only unsubscribe on a web page are listed with a link.
+  - It runs in the background. Leave Mail and a notification tells you when the suggestions are ready.
+  - It uses **Claude Code** on your Mac (your own sign-in, no API key). Claude sees senders, counts and a few subject lines, never what the emails say. Without Claude Code, Rail's own cautious rules make the suggestions.
 - **Search** (the magnifying glass, or `/`) searches all your mail in every account, with Gmail's own search.
 - **Private by default.** Emails show without remote images until you click **Show**, so senders can't tell you opened them. HTML emails run in a sandbox with no scripts.
 - **Silent.** No notifications. Unread conversations show as a count on the Mail tab. Rail checks for new mail every minute.
