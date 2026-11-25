@@ -5,6 +5,7 @@
 //   focus:    &game=chess shows chess instead of Sudoku, &scroll=N scrolls down
 //   wheel:    &wheel=N opens the space wheel with slice N picked (slices clockwise from the top)
 //   slack:    &switcher=1 shows the Shift+Space quick switcher, &switcher=2 with a search typed
+//   mail:     &sel=N selects the Nth email (its quick buttons show), &open=N opens it, &sheet=reply|block opens that sheet
 import { SPACE } from './mock';
 import { useEffect, useRef } from 'react';
 import { SWITCHER_CSS, SWITCHER_LIGHT, SWITCHER_ICON as IC } from '../../src/preload/slackSwitcher';
@@ -18,6 +19,7 @@ import { Calendar } from '../../src/renderer/Calendar';
 import { Focus } from '../../src/renderer/Focus';
 import { Wheel } from '../../src/renderer/Wheel';
 import { Agents } from '../../src/renderer/Agents';
+import { Mail } from '../../src/renderer/Mail';
 
 const q = new URLSearchParams(location.search);
 
@@ -175,6 +177,14 @@ function Body() {
       if (q.get('sweep') === '2') window.dispatchEvent(new PointerEvent('pointerup', { clientX: x, clientY: yAt(14.45) }));
     }, 900);
     if (SPACE === 'meetings' && q.get('open')) click('.mhead', undefined, 500);
+    if (SPACE === 'mail') {
+      const key = (k: string) => window.dispatchEvent(new KeyboardEvent('keydown', { key: k }));
+      const n = Number(q.get('open') ?? q.get('sel') ?? 0);
+      for (let i = 0; i < n; i++) setTimeout(() => key('j'), 400 + i * 60);
+      if (q.get('open')) setTimeout(() => key('Enter'), 500 + n * 60);
+      const sheet = q.get('sheet');
+      if (sheet) setTimeout(() => key(sheet === 'block' ? 'b' : 'r'), 900 + n * 60);
+    }
     if (SPACE === 'focus' && q.get('game') === 'chess') click('button, [role=tab], span, div', 'Chess puzzles', 500);
     const scroll = Number(q.get('scroll') ?? 0);
     if (scroll) setTimeout(() => document.querySelector('.focus, .cal-scroll, .mscroll')?.scrollBy(0, scroll), 900);
@@ -186,6 +196,7 @@ function Body() {
     case 'meetings': return <Meetings />;
     case 'focus': return <Focus />;
     case 'agents': return <Agents />;
+    case 'mail': return <Mail />;
     default: return <Calendar />;
   }
 }

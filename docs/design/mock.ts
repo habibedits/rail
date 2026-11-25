@@ -130,11 +130,54 @@ const agentSessions = [
   agentSession('a9', 'mobile-app', 'working', 'Searching for useAuth', 'VS Code', 3),
 ];
 
+// ---- Mail -----------------------------------------------------------------
+
+const H = 3600000;
+const WORK = 'maya@northwind.studio', HOME = 'maya.chen@gmail.com', SIDE = 'hello@paperkite.co';
+const thread = (account: string, id: string, from: string, fromEmail: string, subject: string, snippet: string, ago: number, unread: boolean, list = false, count = 1) =>
+  ({ key: `${account} ${id}`, account, id, from, fromEmail, subject, snippet, date: Date.now() - ago * H, unread, count, list });
+const mailThreads = [
+  thread(WORK, 't1', 'Dana Whitfield', 'dana@brightline.io', 'Timeline for the onboarding revamp', 'Thanks again for Tuesday. Could you send a rough timeline by Friday?', 0.6, true, false, 3),
+  thread(SIDE, 't2', 'Ledgerly', 'payouts@ledgerly.com', 'Your payout of $1,240.00 is on the way', 'A payout of $1,240.00 to your account ending in 4412 is on its way.', 1.4, true),
+  thread(HOME, 't3', 'Sam Okafor', 'sam.okafor@gmail.com', 'Dinner Sunday?', 'Lena and I are doing dinner Sunday around 7. Want to come?', 2.3, true),
+  thread(HOME, 't4', 'DealHunter Weekly', 'deals@dealhunter.shop', '72 hours only: 60% off everything you looked at', 'Your cart misses you. For the next 72 hours everything is 60% off.', 3.1, true, true),
+  thread(WORK, 't5', 'Theo Alvarez', 'theo@northwind.studio', 'Re: Pricing workshop notes', 'I cleaned up the notes from the workshop and dropped them in Notion.', 26, false, false, 2),
+  thread(SIDE, 't6', 'Growthly SEO', 'kevin@growthly-seo.net', 'Quick question about paperkite.co', 'I was looking at paperkite.co and noticed you’re missing out on traffic.', 27, false, true),
+  thread(WORK, 't7', 'Priya Natarajan', 'priya@northwind.studio', 'Final strings for the checklist', 'Attached are the final strings for the welcome checklist.', 30, false),
+  thread(HOME, 't8', 'Skyway Air', 'trips@skywayair.com', 'Your trip to Lisbon: check in now', 'Check-in is open for flight SK 214 to Lisbon on Thursday.', 74, false, true),
+];
+const mailSnap = {
+  hasClient: true,
+  builtIn: true,
+  accounts: [
+    { email: WORK, on: true, unread: 1, error: null, needsSignIn: false },
+    { email: HOME, on: true, unread: 2, error: null, needsSignIn: false },
+    { email: SIDE, on: true, unread: 1, error: null, needsSignIn: false },
+  ],
+  threads: mailThreads,
+  loading: false,
+  updatedAt: Date.now(),
+  error: null,
+};
+const mailDetail = (account: string, id: string) => {
+  const t = mailThreads.find((x) => x.id === id) ?? mailThreads[0];
+  const msg = (mid: string, from: string, fromEmail: string, text: string, ago: number, mine = false) =>
+    ({ id: mid, from, fromEmail, to: account, cc: '', date: Date.now() - ago * H, html: null, text, attachments: [] as { name: string; size: number }[], mine });
+  const messages = id === 't1'
+    ? [
+        msg('m1', 'Maya Chen', WORK, 'Sounds good, talk Tuesday.', 50, true),
+        msg('m2', 'Dana Whitfield', 'dana@brightline.io', 'Great, see you then.', 49),
+        { ...msg('m3', 'Dana Whitfield', 'dana@brightline.io', 'Hi Maya,\n\nThanks again for Tuesday. Could you send a rough timeline for the onboarding revamp by Friday? We mostly need to know when the shorter checklist could ship.\n\nIf it helps, we can push the empty-state work to the next phase.\n\nBest,\nDana', 0.6), attachments: [{ name: 'Onboarding v1 review.pdf', size: 240000 }] },
+      ]
+    : [msg('m9', t.from, t.fromEmail, t.snippet, 1)];
+  return { account, id, subject: t.subject, messages, unsubscribe: t.list, webUrl: 'https://mail.google.com' };
+};
+
 // ---- The stand-in bridge --------------------------------------------------
 
 const ok = (data: unknown) => Promise.resolve({ ok: true, data });
 const state = {
-  spaces: SPACES.map((id) => ({ id, name: NAMES[id], badge: id === 'slack' ? 3 : id === 'agents' ? 2 : 0 })),
+  spaces: SPACES.map((id) => ({ id, name: NAMES[id], badge: id === 'slack' ? 3 : id === 'agents' ? 2 : id === 'mail' ? 4 : 0 })),
   active: SPACES.indexOf(SPACE),
   pinned: false,
   collapsed: 'none',
@@ -166,7 +209,7 @@ const state = {
     const hover = Number(params.get('wheel'));
     const a = -Math.PI / 2 + hover * ((2 * Math.PI) / SPACES.length);
     // The slices in the app's order (src/main/main.ts, WHEEL_ORDER).
-    const order = ['claude', 'notion', 'meetings', 'focus', 'calendar', 'agents', 'slack'];
+    const order = ['claude', 'notion', 'meetings', 'mail', 'focus', 'calendar', 'agents', 'slack'];
     const slots = order.map((id) => SPACES.indexOf(id));
     setTimeout(() => cb({
       open: true, cx: 192, cy: 430, r: 150, spaces: slots.map((i) => ({ ...state.spaces[i], index: i })), active: slots.indexOf(state.active), hover,
@@ -175,6 +218,16 @@ const state = {
     }), 300);
     return () => {};
   },
+  mail: (req: { op: string; account?: string; id?: string }) => {
+    switch (req.op) {
+      case 'open': return ok(mailDetail(req.account!, req.id!));
+      case 'senderCount': return ok(3);
+      case 'blocked': return ok([{ account: HOME, email: 'promo@flashbuys.net', filterId: 'f1' }]);
+      case 'search': return ok(mailThreads.slice(0, 2));
+      default: return ok(mailSnap);
+    }
+  },
+  onMail: () => () => {},
   focus: () => Promise.resolve(focusSnap),
   onFocus: () => () => {},
   puzzle: () => ok({ id: 'demo', fen: 'r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4', solution: ['h5f7'], rating: 1184, themes: ['mateIn1'], lastMove: 'g8f6' }),

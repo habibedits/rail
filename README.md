@@ -1,8 +1,8 @@
-<img src="docs/images/hero.png" alt="Rail: a docked macOS side panel for Claude, Notion, Meetings, Slack, Calendar and Focus" width="100%">
+<img src="docs/images/hero.png" alt="Rail: a docked macOS side panel for Claude, Notion, Meetings, Slack, Mail, Calendar, Agents and Focus" width="100%">
 
 # Rail
 
-**Rail is a side panel that lives on the right edge of your Mac.** It keeps the tools you check all day (Claude, Notion, your meeting recaps, Slack, today's calendar and a focus timer) one keystroke away, without another browser tab or another app window.
+**Rail is a side panel that lives on the right edge of your Mac.** It keeps the tools you check all day (Claude, Notion, your meeting recaps, Slack, every Gmail inbox, today's calendar, your coding agents and a focus timer) one keystroke away, without another browser tab or another app window.
 
 It looks and feels like part of macOS: a frosted-glass panel floating just inside the edge of the screen, a tab bar of space symbols across the top, big titles, rounded lists and the system colors, in light and dark mode.
 
@@ -14,13 +14,13 @@ Press `⌃` `` ` `` anywhere to slide it in or out. Swipe with two fingers on th
 
 ## Everything at a glance
 
-<img src="docs/images/bento.png" alt="Every Rail feature on one page: the panel, Agents, Calendar, Meetings, the Slack quick switcher, Focus, the space wheel, keyboard shortcuts, Claude, Notion and privacy" width="100%">
+<img src="docs/images/bento.png" alt="Every Rail feature on one page: the panel, Agents, Calendar, Meetings, the Slack quick switcher, Focus, the space wheel, keyboard shortcuts, Mail, Claude, Notion and privacy" width="100%">
 
 ---
 
 ## Eight spaces, one panel
 
-<img src="docs/images/spaces.png" alt="The six spaces: Claude, Notion, Meetings, Slack, Calendar and Focus" width="100%">
+<img src="docs/images/spaces.png" alt="The eight spaces: Claude, Notion, Meetings, Slack, Mail, Calendar, Agents and Focus" width="100%">
 
 | | Space | Key | What it's for |
 | --- | --- | --- | --- |
@@ -47,6 +47,8 @@ Press `⌃` `` ` `` anywhere to slide it in or out. Swipe with two fingers on th
 - **A nudge** 5 minutes before each meeting. The Calendar tab counts down (`12m`, `now`).
 
 ## ✉️ Mail
+
+<img src="docs/images/mail.png" alt="The Mail space: every Gmail account in one feed with quick buttons on an email, and an open email with Reply, Archive, Delete and Block" width="100%">
 
 - **Every inbox in one feed.** Sign in to as many Gmail and Google Workspace accounts as you like. Their inboxes merge into one list, newest first, grouped by day. A colored dot on each sender's picture shows which account it came to.
 - **Focus on one account.** The chips under the title (`All · Work · Personal…`) filter to one inbox, with its unread count. `1` is All, `2`–`9` are your accounts.
@@ -216,7 +218,7 @@ npm run dev
 - `src/main/config.ts`: settings that aren't secret (`config.json` in Rail's userData).
 - `src/main/secrets.ts`: Keychain-encrypted secrets.
 - `src/preload/`: `web.ts` for the sites (swipe, Slack silencing), `slackCompact.ts` and `slackSwitcher.ts` for Slack's narrow layout, huddle card and quick switcher, `shell.ts` for Rail's own UI (the `window.rail` bridge), `swipe.ts` for gesture detection.
-- `src/renderer/`: React UI for the top strip, the Notion bar, Meetings, Calendar and Focus.
+- `src/renderer/`: React UI for the top strip, the Notion bar, Meetings, Mail, Calendar, Agents and Focus.
 - `docs/design/`: how the images in this README are made (see below).
 
 ### Remaking the README images
@@ -230,7 +232,7 @@ npx vite --config docs/design/vite.config.mts
 In a second terminal:
 
 ```bash
-TZ=America/New_York DESIGN_WAIT=6000 npx electron docs/design/render.cjs docs/images hero=shots/hero.html@1600x900 spaces=shots/spaces.html@2300x980 calendar=shots/calendar.html@1600x1000 meetings=shots/meetings.html@1600x1000 focus=shots/focus.html@1600x1000 notion=shots/notion.html@1600x1000 wheel=shots/wheel.html@1600x1000 switcher=shots/switcher.html@1600x1000 bento=shots/bento.html@1600x2692
+TZ=America/New_York DESIGN_WAIT=6000 npx electron docs/design/render.cjs docs/images hero=shots/hero.html@1600x900 spaces=shots/spaces.html@2614x980 calendar=shots/calendar.html@1600x1000 meetings=shots/meetings.html@1600x1000 mail=shots/mail.html@1600x1000 focus=shots/focus.html@1600x1000 notion=shots/notion.html@1600x1000 wheel=shots/wheel.html@1600x1000 switcher=shots/switcher.html@1600x1000 bento=shots/bento.html@1600x2900
 ```
 
 Open `http://127.0.0.1:5181/panel.html?space=calendar` (or `meetings`, `agents`, `focus`, `notion`, `slack`, `claude`) to see a single panel.
