@@ -163,7 +163,7 @@ Google only lets an app read Gmail once the app is registered with Google. Rail 
 
 The file is gitignored, so it stays on your Mac. To let a friend use your registration, send them the file privately (up to 100 people can sign in to an unverified app). Without the file, the Mail space asks for the client ID and secret instead.
 
-Rail asks for two permissions: **read, send and organize mail** (`gmail.modify`: no permanent deletes, Delete goes to Trash) and **manage filters** (`gmail.settings.basic`: only for Block). The client and each account's sign-in are stored encrypted in your Keychain. Mail goes only between your Mac and Google.
+Rail asks for two permissions: **read, send and organize mail** (`gmail.modify`: no permanent deletes, Delete goes to Trash) and **manage filters** (`gmail.settings.basic`: only for Block). Each account's sign-in is stored encrypted in your Keychain. Mail goes only between your Mac and Google.
 
 ## 🎯 Space wheel
 
