@@ -20,8 +20,8 @@ class FakeDate extends RealDate {
 
 const params = new URLSearchParams(location.search);
 export const SPACE = params.get('space') ?? 'calendar';
-const SPACES = ['claude', 'notion', 'meetings', 'slack', 'calendar', 'agents', 'focus'];
-const NAMES: Record<string, string> = { claude: 'Claude', notion: 'Notion', meetings: 'Meetings', slack: 'Slack', calendar: 'Calendar', agents: 'Agents', focus: 'Focus' };
+const SPACES = ['claude', 'notion', 'meetings', 'slack', 'mail', 'calendar', 'agents', 'focus'];
+const NAMES: Record<string, string> = { claude: 'Claude', notion: 'Notion', meetings: 'Meetings', slack: 'Slack', mail: 'Mail', calendar: 'Calendar', agents: 'Agents', focus: 'Focus' };
 
 const day = new Date(); day.setHours(0, 0, 0, 0);
 const at = (h: number, m = 0) => day.getTime() + (h * 60 + m) * 60000;

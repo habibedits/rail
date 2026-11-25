@@ -44,6 +44,7 @@ export function SpaceIcon({ id, size = 18 }: { id: string; size?: number }) {
     case 'notion': return <svg {...p}><rect x="5" y="3" width="14" height="18" rx="2.5" /><path d="M9 8h6M9 12h6M9 16h4" /></svg>;
     case 'meetings': return <svg {...p}><path d="M4 10v4M8 7v10M12 4v16M16 8v8M20 11v2" /></svg>;
     case 'slack': return <svg {...p}><path d="M5 5h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-8l-5 3.5V18H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z" /></svg>;
+    case 'mail': return <svg {...p}><rect x="3" y="5" width="18" height="14" rx="3" /><path d="m3.5 7.5 8.5 6 8.5-6" /></svg>;
     case 'calendar': return <svg {...p}><rect x="3" y="5" width="18" height="16" rx="3" /><path d="M3 10h18M8 3v4M16 3v4" /></svg>;
     case 'agents': return <svg {...p}><path d="M8 8l-4 4 4 4M16 8l4 4-4 4M13.5 6l-3 12" /></svg>;
     case 'focus': return <svg {...p}><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2.5 2.5M9.5 2.5h5" /></svg>;
@@ -53,3 +54,19 @@ export function SpaceIcon({ id, size = 18 }: { id: string; size?: number }) {
 
 export const NewChat = () => (<svg {...base}><path d="M8 3.5H4.5a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1V8" /><path d="M11.5 2.5l2 2L8 10H6V8z" /></svg>);
 export const More = () => (<svg {...base}><circle cx="4" cy="8" r=".6" fill="currentColor" /><circle cx="8" cy="8" r=".6" fill="currentColor" /><circle cx="12" cy="8" r=".6" fill="currentColor" /></svg>);
+
+// Mail actions, on the same 24px grid as the space symbols.
+export function MailIcon({ id, size = 17 }: { id: 'reply' | 'archive' | 'trash' | 'block' | 'compose' | 'person' | 'search' | 'check' | 'paperclip'; size?: number }) {
+  const p = { ...sym, width: size, height: size };
+  switch (id) {
+    case 'reply': return <svg {...p}><path d="M20 19v-4a6 6 0 0 0-6-6H4" /><path d="m9 14-5-5 5-5" /></svg>;
+    case 'archive': return <svg {...p}><rect x="3" y="4" width="18" height="4" rx="1" /><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8M10 12h4" /></svg>;
+    case 'trash': return <svg {...p}><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" /></svg>;
+    case 'block': return <svg {...p}><circle cx="12" cy="12" r="9" /><path d="m5.6 5.6 12.8 12.8" /></svg>;
+    case 'compose': return <svg {...p}><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>;
+    case 'person': return <svg {...p}><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>;
+    case 'search': return <svg {...p}><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>;
+    case 'check': return <svg {...p}><path d="m5 12 5 5 9-10" /></svg>;
+    case 'paperclip': return <svg {...p}><path d="m21 11-8.5 8.5a5 5 0 0 1-7-7L14 4a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4L15.5 7" /></svg>;
+  }
+}

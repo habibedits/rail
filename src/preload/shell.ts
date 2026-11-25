@@ -23,6 +23,12 @@ contextBridge.exposeInMainWorld('rail', {
     return () => ipcRenderer.removeListener('rail:focus', listener);
   },
   agents: (req: unknown) => ipcRenderer.invoke('agents', req),
+  mail: (req: unknown) => ipcRenderer.invoke('mail', req),
+  onMail: (cb: (snap: unknown) => void) => {
+    const listener = (_e: IpcRendererEvent, snap: unknown) => cb(snap);
+    ipcRenderer.on('rail:mail', listener);
+    return () => ipcRenderer.removeListener('rail:mail', listener);
+  },
   onAgents: (cb: (snap: unknown) => void) => {
     const listener = (_e: IpcRendererEvent, snap: unknown) => cb(snap);
     ipcRenderer.on('rail:agents', listener);

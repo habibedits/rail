@@ -6,7 +6,7 @@
 
 It looks and feels like part of macOS: a frosted-glass panel floating just inside the edge of the screen, a tab bar of space symbols across the top, big titles, rounded lists and the system colors, in light and dark mode.
 
-Press `⌃` `` ` `` anywhere to slide it in or out. Swipe with two fingers on the panel, or press `⌃1` to `⌃7`, to move between spaces.
+Press `⌃` `` ` `` anywhere to slide it in or out. Swipe with two fingers on the panel, or press `⌃1` to `⌃8`, to move between spaces.
 
 > All names, companies and meetings in these images are made up.
 
@@ -18,7 +18,7 @@ Press `⌃` `` ` `` anywhere to slide it in or out. Swipe with two fingers on th
 
 ---
 
-## Seven spaces, one panel
+## Eight spaces, one panel
 
 <img src="docs/images/spaces.png" alt="The six spaces: Claude, Notion, Meetings, Slack, Calendar and Focus" width="100%">
 
@@ -28,9 +28,10 @@ Press `⌃` `` ` `` anywhere to slide it in or out. Swipe with two fingers on th
 | 📓 | **Notion** | `⌃2` | Your real Notion, re-fit for a narrow pane. |
 | 🎙️ | **Meetings** | `⌃3` | Fireflies recaps, action items, transcripts and live calls. |
 | 💬 | **Slack** | `⌃4` | Slack, completely silent. Unreads show as a count on its tab. |
-| 📅 | **Calendar** | `⌃5` | Today from every Notion Calendar account, in one view. |
-| 🤖 | **Agents** | `⌃6` | Every Claude Code session as a little buddy: what it's doing, Allow, answers. |
-| 🍅 | **Focus** | `⌃7` | A Pomodoro timer, a streak grid, Sudoku and chess puzzles. |
+| ✉️ | **Mail** | `⌃5` | Every Gmail account in one feed. Reply, Archive, Delete, Block. |
+| 📅 | **Calendar** | `⌃6` | Today from every Notion Calendar account, in one view. |
+| 🤖 | **Agents** | `⌃7` | Every Claude Code session as a little buddy: what it's doing, Allow, answers. |
+| 🍅 | **Focus** | `⌃8` | A Pomodoro timer, a streak grid, Sudoku and chess puzzles. |
 
 ---
 
@@ -44,6 +45,21 @@ Press `⌃` `` ` `` anywhere to slide it in or out. Swipe with two fingers on th
 - **Edit** an event's name, date and time on its card. If other people are invited, Rail asks first, because they'll get an update.
 - **Click an event** to read its description and location, RSVP, open its Notion meeting note, or **Join & transcribe** the call.
 - **A nudge** 5 minutes before each meeting. The Calendar tab counts down (`12m`, `now`).
+
+## ✉️ Mail
+
+- **Every inbox in one feed.** Sign in to as many Gmail and Google Workspace accounts as you like. Their inboxes merge into one list, newest first, grouped by day. A colored dot on each sender's picture shows which account it came to.
+- **Focus on one account.** The chips under the title (`All · Work · Personal…`) filter to one inbox, with its unread count. `1` is All, `2`–`9` are your accounts.
+- **Four actions on every email:** **Reply**, **Archive**, **Delete** and **Block**. Hover an email in the list for quick buttons, or open it for the button bar at the bottom.
+  - **Reply** sends from the account the email came to. Tap **Thanks!**, **Sounds good 👍** or **I'll get back to you tomorrow** to fill it in, then `⌘↵` to send.
+  - **Delete** moves the conversation to Gmail's Trash. **Archive** takes it out of the inbox. Both show **Undo** for a few seconds.
+  - **Block** adds a Gmail filter that sends the sender's future mail straight to Trash, so it holds on your phone too. It can also move their earlier emails to Trash and unsubscribe you from mailing lists. Unblock anyone under **Accounts**.
+- **Search** (the magnifying glass, or `/`) searches all your mail in every account, with Gmail's own search.
+- **Private by default.** Emails show without remote images until you click **Show**, so senders can't tell you opened them. HTML emails run in a sandbox with no scripts.
+- **Silent.** No notifications. Unread conversations show as a count on the Mail tab. Rail checks for new mail every minute.
+- **Keyboard:** `J` / `K` move, `↵` opens, `Esc` goes back, `R` reply, `E` archive, `D` delete, `B` block, `C` new email, `/` search.
+
+**Set up:** see [Mail](#mail-gmail) under Set up.
 
 ## 🎙️ Meetings
 
@@ -131,6 +147,20 @@ Rail isn't code-signed. If macOS blocks it the first time, right-click Rail in A
    - sign in with your email address and the code the site sends you. It's the same account as your Google sign-in.
 2. **Calendar:** open the Calendar space and click **Connect**. Approve Rail in Notion in your browser. Rail reads every account you've added to Notion Calendar.
 3. **Meetings:** open the Meetings space and paste your Fireflies API key (in Fireflies: **Integrations → Fireflies API**). It's stored encrypted in your Keychain.
+4. **Mail:** see below.
+
+### Mail (Gmail)
+
+Google only lets apps read Gmail through an OAuth client, and Rail has no server of its own, so you make one in your own Google Cloud project. It's free and takes a few minutes, once:
+
+1. In [Google Cloud](https://console.cloud.google.com/projectcreate), create a project (any name, e.g. "Rail").
+2. Turn on the [Gmail API](https://console.cloud.google.com/apis/library/gmail.googleapis.com) for it.
+3. Open **Google Auth Platform → Branding** (the OAuth consent screen), pick **External**, and fill in the app name and your email. Under **Audience**, add every address you'll sign in with as a test user, then click **Publish app**. Published, your sign-ins don't expire every 7 days. Google shows an "unverified app" warning when you sign in; that's expected for an app only you use. Click **Advanced → Go to Rail**.
+4. Under **Clients** (or **Credentials**), create an **OAuth client ID** of type **Desktop app**.
+5. In Rail's Mail space, paste the client ID and secret (or the whole JSON file Google offers to download), then **Sign in with Google**. Your browser opens; pick an account and allow both Gmail permissions.
+6. Add more accounts from the person button → **+ Add a Gmail account**.
+
+Rail asks for two permissions: **read, send and organize mail** (`gmail.modify`: no permanent deletes, Delete goes to Trash) and **manage filters** (`gmail.settings.basic`: only for Block). The client and each account's sign-in are stored encrypted in your Keychain. Mail goes only between your Mac and Google.
 
 ## 🎯 Space wheel
 
@@ -141,7 +171,7 @@ Jump to any space without hunting for its tab, like a ping wheel in a game.
 - **Mouse:** hold the **middle button** (click the scroll wheel) anywhere on Rail. A pie of every space pops up. Nudge toward a slice and **let go**: the last highlighted space opens. It goes by direction, not distance, so a small flick is enough. **Slack, Claude and Notion are the top three slices**, so the spaces you open most are a flick up.
 - **Trackpad:** hold **Option (⌥)** for a moment, glide your finger toward a space, and **let go of Option**.
 - **Quick click instead of hold:** a quick middle click (or a short Option hold) leaves the wheel open. Click a slice to go there.
-- While it's open, `1`–`7` pick directly, and `Esc`, or letting go in the middle, cancels.
+- While it's open, `1`–`8` pick directly, and `Esc`, or letting go in the middle, cancels.
 - Don't want Option to open it? Untick **Rail menu → Hold Option for Space Wheel**.
 
 ## Keyboard and gestures
@@ -149,7 +179,7 @@ Jump to any space without hunting for its tab, like a ping wheel in a game.
 | Do this | To |
 | --- | --- |
 | `⌃` `` ` `` | Show or hide Rail, from any app |
-| `⌃1` … `⌃7` | Jump to a space (while Rail has focus) |
+| `⌃1` … `⌃8` | Jump to a space (while Rail has focus) |
 | `⌃⌥←` / `⌃⌥→`, or a two-finger swipe on the panel | Previous / next space |
 | Hold the middle mouse button, or hold `⌥` | Space wheel: nudge toward a space and let go |
 | `⇧Space` (in Slack) | Slack quick switcher: recent chats, quick reply, search |
@@ -159,9 +189,9 @@ Jump to any space without hunting for its tab, like a ping wheel in a game.
 ## Your data stays on your Mac
 
 - **Nothing personal is in this repo.** Your logins, the Fireflies key, Notion Calendar access and Focus history live only on the Mac you set up.
-- Logins live in Rail's own browser storage in `~/Library/Application Support/Rail`. The Fireflies key and Notion Calendar tokens are encrypted with the macOS Keychain.
+- Logins live in Rail's own browser storage in `~/Library/Application Support/Rail`. The Fireflies key, Notion Calendar tokens and Gmail sign-ins are encrypted with the macOS Keychain.
 - Someone who clones the repo gets the code, not your accounts. They sign in to their own.
-- Rail talks only to the services you use (claude.ai, Notion, Slack, Fireflies, Lichess) and has no analytics. The Agents space listens only on `127.0.0.1`, and only to Claude Code hooks that carry its private token.
+- Rail talks only to the services you use (claude.ai, Notion, Slack, Gmail, Fireflies, Lichess) and has no analytics. The Agents space listens only on `127.0.0.1`, and only to Claude Code hooks that carry its private token.
 
 ---
 
@@ -178,6 +208,7 @@ npm run dev
 
 - `src/main/main.ts`: the window, docking, spaces, link handling and IPC.
 - `src/main/notionCal.ts`: Notion Calendar through Notion's MCP server.
+- `src/main/gmail.ts`: the Mail space. Google sign-in, the merged inbox, reply, archive, trash and block through the Gmail API.
 - `src/main/agents.ts`: the Agents space. A local server for Claude Code hooks, session state, and installing or removing the hook.
 - `src/main/config.ts`: settings that aren't secret (`config.json` in Rail's userData).
 - `src/main/secrets.ts`: Keychain-encrypted secrets.

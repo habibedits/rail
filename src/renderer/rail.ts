@@ -47,6 +47,8 @@ declare global {
       onAgents: (cb: (snap: AgentsSnapshot) => void) => () => void;
       onAgentsOpen: (cb: (sessionId: string) => void) => () => void;
       onWheel: (cb: (w: WheelState) => void) => () => void;
+      mail: (req: MailReq) => Promise<FFRes & { needsSignIn?: boolean }>;
+      onMail: (cb: (snap: MailSnapshot) => void) => () => void;
     };
   }
 }
@@ -276,4 +278,90 @@ export async function agents(req: AgentsReq): Promise<AgentsSnapshot> {
   const res = await window.rail.agents(req);
   if (!res.ok) throw new Error(res.error);
   return res.data as AgentsSnapshot;
+}
+
+// ---- Mail (Gmail) -------------------------------------------------------------
+// Mirrors src/main/gmail.ts.
+
+export interface MailThread {
+  key: string;
+  account: string;
+  id: string;
+  from: string;
+  fromEmail: string;
+  subject: string;
+  snippet: string;
+  date: number;
+  unread: boolean;
+  count: number;
+  list: boolean;
+}
+
+export interface MailAccount { email: string; on: boolean; unread: number; error: string | null; needsSignIn: boolean }
+
+export interface MailSnapshot {
+  hasClient: boolean;
+  accounts: MailAccount[];
+  threads: MailThread[];
+  loading: boolean;
+  updatedAt: number;
+  error: string | null;
+}
+
+export interface MailMessage {
+  id: string;
+  from: string;
+  fromEmail: string;
+  to: string;
+  cc: string;
+  date: number;
+  html: string | null;
+  text: string | null;
+  attachments: { name: string; size: number }[];
+  mine: boolean;
+}
+
+export interface MailDetail {
+  account: string;
+  id: string;
+  subject: string;
+  messages: MailMessage[];
+  unsubscribe: boolean;
+  webUrl: string;
+}
+
+export type MailUndo =
+  | { kind: 'archive' | 'trash'; account: string; ids: string[] }
+  | { kind: 'block'; account: string; ids: string[]; filterId: string | null };
+
+export interface MailBlocked { account: string; email: string; filterId: string }
+
+export type MailReq =
+  | { op: 'get' }
+  | { op: 'refresh' }
+  | { op: 'setClient'; id: string; secret: string }
+  | { op: 'clearClient' }
+  | { op: 'connect' }
+  | { op: 'remove'; email: string }
+  | { op: 'toggle'; email: string }
+  | { op: 'search'; q: string }
+  | { op: 'open'; account: string; id: string }
+  | { op: 'reply'; account: string; id: string; text: string }
+  | { op: 'compose'; account: string; to: string; subject: string; text: string }
+  | { op: 'archive' | 'trash'; account: string; id: string }
+  | { op: 'senderCount'; account: string; email: string }
+  | { op: 'block'; account: string; id: string; email: string; trashAll: boolean; unsubscribe: boolean }
+  | { op: 'undo'; undo: MailUndo }
+  | { op: 'blocked' }
+  | { op: 'unblock'; account: string; filterId: string }
+  | { op: 'openUrl'; url: string };
+
+export async function mail<T = MailSnapshot>(req: MailReq): Promise<T> {
+  const res = await window.rail.mail(req);
+  if (!res.ok) {
+    const err = new Error(res.error) as Error & { needsSignIn?: boolean };
+    err.needsSignIn = res.needsSignIn;
+    throw err;
+  }
+  return res.data as T;
 }

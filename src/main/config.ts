@@ -15,8 +15,9 @@ export interface Config {
   notionLinksInitialized: boolean; // Rail made itself the notion:// handler once
   calendarsOn: Record<string, boolean>; // Calendar space: per-calendar on/off (else Google's own setting)
   slackNoticeShown: boolean; // one-time "turn off Slack desktop notifications" tip
-  spacesVersion: number; // 2 = Claude and Notion are separate spaces, 3 = Agents before Focus
+  spacesVersion: number; // 2 = Claude and Notion are separate spaces, 3 = Agents before Focus, 4 = Mail after Slack
   wheelOption: boolean; // holding Option opens the space wheel (trackpad-friendly)
+  mailHidden: string[]; // Mail space: signed-in accounts left out of the feed
 }
 
 const DEFAULTS: Config = {
@@ -33,6 +34,7 @@ const DEFAULTS: Config = {
   calendarsOn: {},
   spacesVersion: 1, // a config file from before versions existed
   wheelOption: true,
+  mailHidden: [],
 };
 
 const file = () => path.join(app.getPath('userData'), 'config.json');
@@ -51,9 +53,14 @@ export function loadConfig(): Config {
       if (cfg.activeSpace >= 5) cfg.activeSpace += 1;
       cfg.spacesVersion = 3;
     }
+    // v4 added Mail after Slack: Calendar, Agents and Focus moved up one.
+    if (cfg.spacesVersion < 4) {
+      if (cfg.activeSpace >= 4) cfg.activeSpace += 1;
+      cfg.spacesVersion = 4;
+    }
     return cfg;
   } catch {
-    return { ...DEFAULTS, spacesVersion: 3 }; // first run: nothing to migrate
+    return { ...DEFAULTS, spacesVersion: 4 }; // first run: nothing to migrate
   }
 }
 

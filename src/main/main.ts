@@ -28,6 +28,7 @@ import * as ff from './fireflies';
 import * as ncal from './notionCal';
 import * as focusTimer from './focus';
 import * as agentHub from './agents';
+import * as gmail from './gmail';
 import { execFile } from 'node:child_process';
 
 // ---------------------------------------------------------------------------
@@ -39,7 +40,7 @@ const BAR_H = 52; // bottom toolbar of the Claude and Notion panes (back, forwar
 const EDGE_GAP = 8; // the panel floats this far in from the screen's edges
 // Space wheel: which space sits in each slice, clockwise from the top. The top
 // three (Slack, Claude, Notion) are the quick flick-up ones.
-const WHEEL_ORDER = ['claude', 'notion', 'meetings', 'focus', 'calendar', 'agents', 'slack'] as const;
+const WHEEL_ORDER = ['claude', 'notion', 'meetings', 'mail', 'focus', 'calendar', 'agents', 'slack'] as const;
 const MIN_W = 320; // claude.ai's narrow layout stays usable at this width
 const SLIDE_MS = 250;
 const HOTKEY = 'Control+`';
@@ -70,6 +71,7 @@ const SPACES = [
   { id: 'notion', name: 'Notion' },
   { id: 'meetings', name: 'Meetings' },
   { id: 'slack', name: 'Slack' },
+  { id: 'mail', name: 'Mail' },
   { id: 'calendar', name: 'Calendar' },
   { id: 'agents', name: 'Agents' },
   { id: 'focus', name: 'Focus' }, // always last
@@ -277,7 +279,7 @@ function attachKeys(wc: WebContents) {
 // Space wheel: hold the middle mouse button (or, on a trackpad, hold Option),
 // nudge toward a space and let go. Picking goes by direction, not distance,
 // so a small nudge is enough. A quick click (or a quick Option hold) leaves
-// the wheel open so you can click a slice. Esc or the middle cancels; 1–6 pick.
+// the wheel open so you can click a slice. Esc or the middle cancels; 1–8 pick.
 // The main process follows the pointer itself, so it works whichever pane the
 // click started in.
 // ---------------------------------------------------------------------------
@@ -505,6 +507,7 @@ function layout() {
   calendar.setBounds({ x: 0, y: 0, width: w, height: ch });
   focusView.setBounds({ x: 0, y: 0, width: w, height: ch });
   agentsView.setBounds({ x: 0, y: 0, width: w, height: ch });
+  mailView.setBounds({ x: 0, y: 0, width: w, height: ch });
 }
 
 // Claude and Notion each get a whole space; Notion keeps its header bar.
@@ -605,6 +608,7 @@ function focusActive() {
     : id === 'calendar' ? calendar.webContents
     : id === 'focus' ? focusView.webContents
     : id === 'agents' ? agentsView.webContents
+    : id === 'mail' ? mailView.webContents
     : meetings.webContents;
   wc.focus();
 }
@@ -619,7 +623,7 @@ function state() {
       id: s.id,
       name: s.name,
       // no indicator on the Calendar dot (user preference)
-      badge: s.id === 'slack' ? slackUnread : s.id === 'agents' ? agentsWaiting : 0,
+      badge: s.id === 'slack' ? slackUnread : s.id === 'agents' ? agentsWaiting : s.id === 'mail' ? mailUnread : 0,
     })),
     active,
     pinned: cfg.alwaysOnTop,
@@ -772,7 +776,7 @@ async function notionDown() {
 
 function broadcast() {
   const s = state();
-  for (const v of [strip, divider, claudeBar, meetings]) {
+  for (const v of [strip, divider, claudeBar, meetings, mailView]) {
     if (v && !v.webContents.isDestroyed()) v.webContents.send('rail:state', s);
   }
 }
@@ -1334,6 +1338,86 @@ type AgentsReq =
   | { op: 'dismiss'; id: string }
   | { op: 'clearEnded' };
 
+// ---------------------------------------------------------------------------
+// Mail: every Gmail account in one feed (see gmail.ts). Silent: new mail only
+// changes the count on the Mail tab.
+// ---------------------------------------------------------------------------
+
+let mailView: WebContentsView;
+let mailUnread = 0;
+
+function startMail() {
+  gmail.start({
+    isHidden: (email) => cfg.mailHidden.includes(email),
+    onChange: (snap) => {
+      if (mailView && !mailView.webContents.isDestroyed()) mailView.webContents.send('rail:mail', snap);
+      const n = gmail.unreadTotal();
+      if (n !== mailUnread) { mailUnread = n; broadcast(); }
+    },
+  });
+}
+
+type MailReq =
+  | { op: 'get' }
+  | { op: 'refresh' }
+  | { op: 'setClient'; id: string; secret: string }
+  | { op: 'clearClient' }
+  | { op: 'connect' }
+  | { op: 'remove'; email: string }
+  | { op: 'toggle'; email: string }
+  | { op: 'search'; q: string }
+  | { op: 'open'; account: string; id: string }
+  | { op: 'reply'; account: string; id: string; text: string }
+  | { op: 'compose'; account: string; to: string; subject: string; text: string }
+  | { op: 'archive' | 'trash'; account: string; id: string }
+  | { op: 'senderCount'; account: string; email: string }
+  | { op: 'block'; account: string; id: string; email: string; trashAll: boolean; unsubscribe: boolean }
+  | { op: 'undo'; undo: gmail.Undo }
+  | { op: 'blocked' }
+  | { op: 'unblock'; account: string; filterId: string }
+  | { op: 'openUrl'; url: string };
+
+const str = (v: unknown, max = 2000) => String(v ?? '').slice(0, max);
+const gid = (v: unknown) => { const s = str(v, 64); if (!/^[0-9a-zA-Z_-]+$/.test(s)) throw new Error('Bad id'); return s; };
+
+async function handleMail(req: MailReq): Promise<unknown> {
+  switch (req.op) {
+    case 'get': break;
+    case 'refresh': await gmail.refresh(); break;
+    case 'setClient': gmail.setClient(str(req.id, 4000), str(req.secret, 200)); break;
+    case 'clearClient': gmail.clearClient(); break;
+    case 'connect': await gmail.connect(); break;
+    case 'remove': gmail.removeAccount(str(req.email, 320)); break;
+    case 'toggle': {
+      const email = str(req.email, 320);
+      cfg.mailHidden = cfg.mailHidden.includes(email) ? cfg.mailHidden.filter((e) => e !== email) : [...cfg.mailHidden, email];
+      saveConfig(cfg);
+      gmail.changed();
+      break;
+    }
+    case 'search': return gmail.search(str(req.q, 500));
+    case 'open': return gmail.open(str(req.account, 320), gid(req.id));
+    case 'reply': await gmail.reply(str(req.account, 320), gid(req.id), str(req.text, 100_000)); return true;
+    case 'compose': await gmail.compose(str(req.account, 320), str(req.to, 2000), str(req.subject, 500), str(req.text, 100_000)); return true;
+    case 'archive': return gmail.archive(str(req.account, 320), gid(req.id));
+    case 'trash': return gmail.trash(str(req.account, 320), gid(req.id));
+    case 'senderCount': return (await gmail.fromSender(str(req.account, 320), str(req.email, 320))).length;
+    case 'block': return gmail.block(str(req.account, 320), gid(req.id), str(req.email, 320), { trashAll: !!req.trashAll, unsubscribe: !!req.unsubscribe });
+    case 'undo': {
+      const u = req.undo;
+      if (!u || !['archive', 'trash', 'block'].includes(u.kind) || !Array.isArray(u.ids)) throw new Error('Nothing to undo');
+      const ids = u.ids.slice(0, 200).map(gid);
+      const account = str(u.account, 320);
+      await gmail.undo(u.kind === 'block' ? { kind: 'block', account, ids, filterId: u.filterId ? gid(u.filterId) : null } : { kind: u.kind, account, ids });
+      break;
+    }
+    case 'blocked': return gmail.blocked();
+    case 'unblock': await gmail.unblock(str(req.account, 320), gid(req.filterId)); return gmail.blocked();
+    case 'openUrl': if (/^https:\/\//.test(str(req.url))) void shell.openExternal(str(req.url)); return true;
+  }
+  return gmail.snapshot();
+}
+
 function createWindow() {
   const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
   win = new BaseWindow({
@@ -1377,6 +1461,10 @@ function createWindow() {
   calendar = createShellView('calendar');
   calendarContainer.addChildView(calendar);
 
+  const mailContainer = new View();
+  mailView = createShellView('mail');
+  mailContainer.addChildView(mailView);
+
   const agentsContainer = new View();
   agentsView = createShellView('agents');
   agentsContainer.addChildView(agentsView);
@@ -1385,11 +1473,12 @@ function createWindow() {
   focusView = createShellView('focus');
   focusContainer.addChildView(focusView);
 
-  containers.push(claudeSpace, notionSpace, meet, slackContainer, calendarContainer, agentsContainer, focusContainer);
+  containers.push(claudeSpace, notionSpace, meet, slackContainer, mailContainer, calendarContainer, agentsContainer, focusContainer);
   win.contentView.addChildView(claudeSpace);
   win.contentView.addChildView(notionSpace);
   win.contentView.addChildView(meet);
   win.contentView.addChildView(slackContainer);
+  win.contentView.addChildView(mailContainer);
   win.contentView.addChildView(calendarContainer);
   win.contentView.addChildView(agentsContainer);
   win.contentView.addChildView(focusContainer);
@@ -1782,6 +1871,15 @@ if (!app.requestSingleInstanceLock()) {
       }
     });
 
+    ipcMain.handle('mail', async (e, req: MailReq) => {
+      if (!shellIds.has(e.sender.id)) return { ok: false, error: 'Not allowed' };
+      try {
+        return { ok: true, data: await handleMail(req) };
+      } catch (err) {
+        return { ok: false, error: (err as Error).message, needsSignIn: err instanceof gmail.MailError ? err.needsSignIn : false };
+      }
+    });
+
     ipcMain.on('rail:cmd', (e, cmd: Cmd) => {
       if (!shellIds.has(e.sender.id)) return; // only Rail's own UI may send commands
       handleCmd(cmd);
@@ -1841,11 +1939,12 @@ if (!app.requestSingleInstanceLock()) {
     buildMenu();
     createWindow();
     startAgents();
+    startMail();
     ready = true;
     void refreshCalendar();
     setInterval(() => void refreshCalendar(), 5 * 60 * 1000);
     setInterval(calendarTick, 20 * 1000);
-    powerMonitor.on('resume', () => { void refreshCalendar(); focusTimer.resume(); });
+    powerMonitor.on('resume', () => { void refreshCalendar(); focusTimer.resume(); void gmail.refresh(); });
     if (pendingNotionLink) {
       const link = pendingNotionLink;
       pendingNotionLink = null;

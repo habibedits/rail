@@ -5,7 +5,7 @@ import path from 'node:path';
 // API keys, encrypted with Electron safeStorage (backed by the macOS Keychain).
 // The file on disk only ever holds ciphertext.
 
-type Name = 'fireflies' | 'notion-calendar';
+type Name = 'fireflies' | 'notion-calendar' | 'gmail-client' | 'gmail-accounts';
 const file = () => path.join(app.getPath('userData'), 'secrets.json');
 
 function readAll(): Record<string, string> {
