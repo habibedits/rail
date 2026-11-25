@@ -735,10 +735,6 @@ const NOTION_CHILDREN = `(() => {
     seen.add(id);
     out.push({ url: location.origin + '/p/' + id, title: (title || '').replace(/\\s+/g, ' ').trim().slice(0, 70) || 'Untitled', kind });
   };
-  for (const b of frame.querySelectorAll('[class*="notion-meeting_note"][data-block-id]')) {
-    const t = b.querySelector('h1, h2, h3, [placeholder]')?.textContent || b.textContent;
-    add(b.getAttribute('data-block-id').replace(/-/g, ''), t, 'Meeting note');
-  }
   for (const b of frame.querySelectorAll('.notion-page-content [class*="notion-collection_view"][data-block-id]')) {
     const t = b.querySelector('[contenteditable], [placeholder]')?.textContent || b.textContent.slice(0, 60);
     add(b.getAttribute('data-block-id').replace(/-/g, ''), t, 'Database');
@@ -768,7 +764,7 @@ async function notionDown() {
   const kids = (await wc.executeJavaScript(NOTION_CHILDREN).catch(() => [])) as { url: string; title: string; kind: string }[];
   const ok = kids.filter((k) => /^https:\/\/([a-z]+\.)?notion\.(so|com)\//.test(k.url));
   const items: Electron.MenuItemConstructorOptions[] = ok.length
-    ? ok.map((k) => ({ label: k.kind === 'Meeting note' ? `\u{1F4DD}  ${k.title}` : k.title, sublabel: k.kind, click: () => wc.loadURL(k.url) }))
+    ? ok.map((k) => ({ label: k.title, sublabel: k.kind, click: () => wc.loadURL(k.url) }))
     : [{ label: 'No pages inside this one', enabled: false }];
   const d = divider.getBounds();
   Menu.buildFromTemplate(items).popup({ window: win, x: Math.max(0, d.width - 220), y: STRIP_H + d.y });
@@ -1109,43 +1105,30 @@ type CalReq =
   | { op: 'move'; id: string; title: string; start: number; end: number }
   | { op: 'edit'; id: string; title: string; start: number; end: number }
   | { op: 'add'; calendar: string; title: string; start: number; end: number }
-  | { op: 'notes'; id: string; transcribe?: boolean; join?: boolean }
+  | { op: 'notes'; id: string }
   | { op: 'rsvp'; id: string; title: string; response: 'accepted' | 'declined' | 'tentative' };
 
-// After a meeting note loads in the Notion pane, start Notion's own browser
-// transcription (the "Start in browser" choice under its transcription
-// button), the same as clicking it by hand. Only runs when the user pressed
-// Transcribe in Rail.
-const START_TRANSCRIPTION = `new Promise((done) => {
-  const t0 = Date.now();
-  const step = () => {
-    if (Date.now() - t0 > 15000) return done('timeout');
-    const item = [...document.querySelectorAll('.notion-overlay-container [role=menuitem], .notion-overlay-container [role=option], .notion-overlay-container [role=button]')]
-      .find((x) => /^Start in browser/.test(x.textContent.trim()));
-    if (item) { item.click(); return done('started'); }
-    const more = document.querySelector('[role=button][aria-label^="More transcri"]');
-    if (more && more.getAttribute('aria-expanded') !== 'true') more.click();
-    setTimeout(step, 400);
-  };
-  step();
-})`;
-
-// Notion files a calendar meeting note as a block inside a page of the same
-// name (the database row, with the user's properties). Notion's API returns
-// the block's own page; when its parent in the top bar is that same-named page,
-// open the parent instead, where the user takes notes.
+// Notion files a calendar meeting note as an AI Meeting Notes block inside the
+// meeting's page (the database row, with the user's properties). Notion's API
+// returns the block's own page. Rail doesn't use the AI block (it's hidden), so
+// open the page it sits in: the last link in the top bar's breadcrumb.
 const FIND_NOTE_PARENT = `new Promise((done) => {
   const t0 = Date.now();
   const norm = (t) => (t || '').replace(/\\s+/g, ' ').trim().slice(0, 24).toLowerCase();
+  const dashed = (id) => id.replace(/^(.{8})(.{4})(.{4})(.{4})(.{12})$/, '$1-$2-$3-$4-$5');
   const step = () => {
     if (Date.now() - t0 > 8000) return done(null);
-    const h1 = document.querySelector('.notion-frame h1, .notion-frame [placeholder="New page"], .notion-frame .notion-page-block');
     const here = location.pathname.match(/[0-9a-f]{32}/)?.[0];
     const link = [...document.querySelectorAll('.notion-topbar a[href*="/p/"], header a[href*="/p/"]')].pop();
-    if (h1 && link) {
-      const id = link.getAttribute('href').match(/[0-9a-f]{32}/)?.[0];
-      return done(id && id !== here && norm(link.textContent) === norm(h1.textContent) ? link.href : null);
-    }
+    const id = link?.getAttribute('href').match(/[0-9a-f]{32}/)?.[0];
+    const parent = id && id !== here ? link.href : null;
+    // Opened on the AI block itself: its own page is that block.
+    const root = here && document.querySelector('[data-block-id="' + dashed(here) + '"]');
+    if (parent && root && /meeting_note|transcription/.test(root.className)) return done(parent);
+    const h1 = document.querySelector('.notion-frame h1, .notion-frame [placeholder="New page"], .notion-frame .notion-page-block');
+    const ai = document.querySelector('.notion-frame [class*="notion-meeting_note"], .notion-frame [aria-label^="More transcri"]');
+    if (parent && ai && !h1) return done(parent);
+    if (h1 && link) return done(parent && norm(link.textContent) === norm(h1.textContent) ? parent : null);
     setTimeout(step, 300);
   };
   step();
@@ -1156,13 +1139,6 @@ async function openNoteParent() {
   if (wc.isLoading()) await new Promise<void>((r) => wc.once('did-finish-load', () => r()));
   const parent = await wc.executeJavaScript(FIND_NOTE_PARENT).catch(() => null);
   if (typeof parent === 'string' && /^https:\/\/([a-z]+\.)?notion\.(so|com)\//.test(parent)) await wc.loadURL(parent).catch(() => {});
-}
-
-function startNoteTranscription() {
-  const wc = notion.webContents;
-  const run = () => void wc.executeJavaScript(START_TRANSCRIPTION).catch(() => {});
-  if (wc.isLoading()) wc.once('did-finish-load', run);
-  else run();
 }
 
 async function handleCal(req: CalReq): Promise<unknown> {
@@ -1230,11 +1206,8 @@ async function handleCal(req: CalReq): Promise<unknown> {
       await refreshCalendar();
       return calSnapshot();
     case 'notes': {
-      const ev = anyCalEvent(req.id);
-      if (req.join && ev?.joinUrl) void shell.openExternal(ev.joinUrl);
       showNotionPage(await ncal.meetingNote(req.id));
       await openNoteParent();
-      if (req.transcribe) startNoteTranscription();
       return calSnapshot();
     }
     case 'rsvp': {

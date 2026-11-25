@@ -290,17 +290,8 @@ function Today({ snap, busy, error, run }: { snap: CalSnapshot; busy: string; er
             </div>
           )}
           <div className="dbar wrap">
-            {focus.joinUrl ? (
-              <>
-                <button className="btn small primary" disabled={busy === 'notes'} title="Join the call and start Notion transcription in its meeting note"
-                  onClick={() => run('notes', { op: 'notes', id: focus.id, join: true, transcribe: true })}>Join &amp; transcribe</button>
-                <button className="btn small" onClick={() => void cal({ op: 'open', url: focus.joinUrl! })}>Join</button>
-              </>
-            ) : (
-              <button className="btn small primary" disabled={busy === 'notes'} title="Open the meeting note and start Notion transcription"
-                onClick={() => run('notes', { op: 'notes', id: focus.id, transcribe: true })}>Transcribe</button>
-            )}
-            <button className="btn small" disabled={busy === 'notes'} title="Open this event's Notion meeting note (makes one if there isn't one yet)" onClick={() => run('notes', { op: 'notes', id: focus.id })}>
+            {focus.joinUrl && <button className="btn small primary" onClick={() => void cal({ op: 'open', url: focus.joinUrl! })}>Join</button>}
+            <button className="btn small" disabled={busy === 'notes'} title="Open this event's meeting page in Notion" onClick={() => run('notes', { op: 'notes', id: focus.id })}>
               {busy === 'notes' ? 'Opening…' : 'Notes'}
             </button>
             {focus.canMove && <button className="btn small" title="Change the name, date or time" onClick={() => setEditing(focus.id)}>Edit</button>}

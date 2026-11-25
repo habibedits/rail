@@ -166,7 +166,7 @@ export type CalReq =
   | { op: 'move'; id: string; title: string; start: number; end: number }
   | { op: 'edit'; id: string; title: string; start: number; end: number }
   | { op: 'add'; calendar: string; title: string; start: number; end: number }
-  | { op: 'notes'; id: string; transcribe?: boolean; join?: boolean }
+  | { op: 'notes'; id: string }
   | { op: 'rsvp'; id: string; title: string; response: 'accepted' | 'declined' | 'tentative' };
 
 export async function cal(req: CalReq): Promise<CalSnapshot> {

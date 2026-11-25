@@ -1,17 +1,20 @@
 // Notion keeps ~96px side margins designed for wide windows. In Rail's narrow
-// pane that wastes a quarter of the width. This trims them to 16px while the
-// pane is narrow. It reads layout (computed styles), never page content, and
+// pane that wastes a quarter of the width. This trims them while the pane is
+// narrow: 44px on the left, so a block's ⋮⋮ drag handle (which Notion draws in
+// the margin, left of the block) stays inside the pane and away from the
+// window's edge, and 16px on the right. It reads layout (computed styles), never page content, and
 // doesn't rely on Notion's class names, which change often.
 
 const NARROW_MAX = 640; // only act when the pane is this narrow (CSS px)
 const MIN_MARGIN = 60; // margins at least this wide are "desktop" margins
-const GUTTER = 16;
+const GUTTER = 16; // right margin
+const LEFT = 44; // left margin: room for the ⋮⋮ block handle
 const MARK = 'data-rail-compact';
 
 const CSS = `
   [style*="padding-left: calc(96px"], [style*="padding-inline-start: calc(96px"] {
-    padding-left: calc(${GUTTER}px + env(safe-area-inset-left)) !important;
-    padding-inline-start: calc(${GUTTER}px + env(safe-area-inset-left)) !important;
+    padding-left: calc(${LEFT}px + env(safe-area-inset-left)) !important;
+    padding-inline-start: calc(${LEFT}px + env(safe-area-inset-left)) !important;
   }
   [style*="padding-right: calc(96px"], [style*="padding-inline-end: calc(96px"] {
     padding-right: calc(${GUTTER}px + env(safe-area-inset-right)) !important;
@@ -23,9 +26,7 @@ const CSS = `
      fixed max-width (about half the pane). Let them use the full width; media
      blocks keep their own sizing. */
   .notion-selectable:not(.notion-image-block):not(.notion-video-block):not(.notion-embed-block):not(.notion-bookmark-block)[style*="max-width"] { max-width: 100% !important; }
-  [class*="notion-meeting_note"] div:has(> div > h2) { flex-wrap: wrap !important; row-gap: 8px !important; }
-  [class*="notion-meeting_note"] div:has(> h2) { flex: 1 1 100% !important; }
-  [style*="padding-left: 96px"] { padding-left: ${GUTTER}px !important; }
+  [style*="padding-left: 96px"] { padding-left: ${LEFT}px !important; }
   [style*="padding-right: 96px"] { padding-right: ${GUTTER}px !important; }
 `;
 
@@ -42,7 +43,7 @@ function compactGrid(el: HTMLElement) {
   const [l, , r] = tracks.map((t) => parseFloat(t));
   if (!(l >= MIN_MARGIN && r >= MIN_MARGIN)) return;
   let i = 0;
-  const sizes = [`${GUTTER}px`, 'minmax(0, 1fr)', `${GUTTER}px`];
+  const sizes = [`${LEFT}px`, 'minmax(0, 1fr)', `${GUTTER}px`];
   const next = parts.map((p) => (p.startsWith('[') ? p : sizes[i++])).join(' ');
   el.style.setProperty('grid-template-columns', next, 'important');
   el.setAttribute(MARK, '1');
@@ -54,7 +55,7 @@ function compactPadding(el: HTMLElement) {
   const pr = parseFloat(cs.paddingRight);
   // Symmetric wide padding on a block that spans the pane = page margin.
   if (pl >= MIN_MARGIN && pr >= MIN_MARGIN && Math.abs(pl - pr) < 8 && el.clientWidth >= window.innerWidth * 0.8) {
-    el.style.setProperty('padding-left', `${GUTTER}px`, 'important');
+    el.style.setProperty('padding-left', `${LEFT}px`, 'important');
     el.style.setProperty('padding-right', `${GUTTER}px`, 'important');
     el.setAttribute(MARK, '1');
   }
@@ -164,6 +165,21 @@ function unfit() {
   });
 }
 
+// Notion's AI Meeting Notes block (the note taker and transcription card) is
+// not used in Rail: it's hidden at every width. Found by its block type, and,
+// in case Notion renames that, by the transcription button inside it.
+const NO_AI_NOTES = `
+  [class*="notion-meeting_note"], [class*="notion-transcription"] { display: none !important; }
+`;
+
+function hideAiNotes() {
+  document.querySelectorAll<HTMLElement>('[role="button"][aria-label^="More transcri"]:not([data-rail-hidden])').forEach((b) => {
+    b.setAttribute('data-rail-hidden', '1');
+    const block = b.closest<HTMLElement>('[data-block-id]');
+    if (block && !block.classList.contains('notion-page-block')) block.style.setProperty('display', 'none', 'important');
+  });
+}
+
 export function installNotionCompact() {
   let style: HTMLStyleElement | null = null;
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -189,13 +205,17 @@ export function installNotionCompact() {
   // Pop-ups are fitted on the next frame so they never show cut off.
   let raf = 0;
   const onMutate = () => {
-    if (!raf) raf = requestAnimationFrame(() => { raf = 0; fitOverlays(); hideAddProperty(); });
+    if (!raf) raf = requestAnimationFrame(() => { raf = 0; fitOverlays(); hideAddProperty(); hideAiNotes(); });
     schedule();
   };
 
   document.addEventListener('DOMContentLoaded', () => {
+    const noAi = document.createElement('style');
+    noAi.textContent = NO_AI_NOTES;
+    document.documentElement.appendChild(noAi);
     apply();
     hideAddProperty();
+    hideAiNotes();
     new MutationObserver(onMutate).observe(document.body, { childList: true, subtree: true });
     // Pop-ups can also move without any DOM being added (style-only
     // re-positioning), so re-check while one is open.

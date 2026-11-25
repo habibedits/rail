@@ -43,7 +43,7 @@ Press `⌃` `` ` `` anywhere to slide it in or out. Swipe with two fingers on th
 - **Any day.** Click the date for a month view and pick a day; **Today** brings you back.
 - **Move things fast.** Drag an event to move it (it snaps to 15 minutes). **Drag across empty time** to draw a new event, or double-click a slot, or press **+**.
 - **Edit** an event's name, date and time on its card. If other people are invited, Rail asks first, because they'll get an update.
-- **Click an event** to read its description and location, RSVP, open its Notion meeting note, or **Join & transcribe** the call.
+- **Click an event** to read its description and location, RSVP, **Join** the call, or open its meeting page in Notion with **Notes**.
 - **A nudge** 5 minutes before each meeting. The Calendar tab counts down (`12m`, `now`).
 
 ## ✉️ Mail
@@ -91,6 +91,8 @@ When Claude Code is minimized, you can't see what your agents are doing. The Age
 
 - The real Notion site, with margins, pop-ups and blocks re-fit so nothing gets cut off at 384 px wide.
 - A toolbar at the bottom, like Safari's: **back / forward**, **↑ up** to the page this one lives in, and **↓ down** into any sub-page, meeting note or database on the page.
+- Notion's **AI Meeting Notes** block (the note taker) is hidden in Rail, and **Notes** on a calendar event opens the meeting's own page.
+- The left margin leaves room for each block's **⋮⋮ handle**, so you can grab and drag blocks.
 - Click the page title in the toolbar for your **15 most recent pages**, Notion home, reload, or "open in the Notion app".
 - `notion://` links from Calendar, Slack or Claude open right here instead of in a browser.
 
