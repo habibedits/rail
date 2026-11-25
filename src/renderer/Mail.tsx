@@ -66,7 +66,7 @@ export function Mail() {
 
   if (!snap) return <div className="mail" />;
   if (!snap.hasClient) return <ClientSetup onDone={setSnap} />;
-  if (!snap.accounts.length) return <FirstAccount onDone={setSnap} onBack={async () => setSnap(await mail({ op: 'clearClient' }))} />;
+  if (!snap.accounts.length) return <FirstAccount builtIn={snap.builtIn} onDone={setSnap} onBack={async () => setSnap(await mail({ op: 'clearClient' }))} />;
   return <Inbox snap={snap} setSnap={setSnap} />;
 }
 
@@ -116,7 +116,7 @@ function ClientSetup({ onDone }: { onDone: (s: MailSnapshot) => void }) {
   );
 }
 
-function FirstAccount({ onDone, onBack }: { onDone: (s: MailSnapshot) => void; onBack: () => void }) {
+function FirstAccount({ builtIn, onDone, onBack }: { builtIn: boolean; onDone: (s: MailSnapshot) => void; onBack: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const go = async () => {
@@ -133,11 +133,11 @@ function FirstAccount({ onDone, onBack }: { onDone: (s: MailSnapshot) => void; o
   return (
     <div className="mail setup center">
       <div className="ml-hero"><MailIcon id="compose" size={22} /></div>
-      <p className="title">Add your first Gmail account</p>
+      <p className="title">Sign in to Gmail</p>
       <p className="sub">Google’s sign-in opens in your browser. Add as many accounts as you like; they all land in one feed.</p>
       {error && <p className="error">{error}</p>}
       <button className="btn primary" disabled={busy} onClick={go}>{busy ? 'Waiting for Google…' : 'Sign in with Google'}</button>
-      <button className="linkbtn muted" onClick={onBack}>Use a different OAuth client</button>
+      {!builtIn && <button className="linkbtn muted" onClick={onBack}>Use a different OAuth client</button>}
     </div>
   );
 }
@@ -421,7 +421,7 @@ function Inbox({ snap, setSnap }: { snap: MailSnapshot; setSnap: (s: MailSnapsho
               <ComposeSheet accounts={shownAccounts.length ? shownAccounts : accounts} start={filter !== 'all' ? filter : null} color={color} onClose={() => setSheet(null)} onSent={(from) => { setSheet(null); showToast(`Sent from ${from}`); }} />
             )}
             {sheet.kind === 'accounts' && (
-              <AccountsSheet accounts={accounts} color={color} setSnap={setSnap} onClose={() => setSheet(null)} onToast={showToast} />
+              <AccountsSheet accounts={accounts} builtIn={snap.builtIn} color={color} setSnap={setSnap} onClose={() => setSheet(null)} onToast={showToast} />
             )}
           </div>
         </>
@@ -759,7 +759,7 @@ function ComposeSheet({ accounts, start, color, onClose, onSent }: { accounts: M
   );
 }
 
-function AccountsSheet({ accounts, color, setSnap, onClose, onToast }: { accounts: MailAccount[]; color: (e: string) => string; setSnap: (s: MailSnapshot) => void; onClose: () => void; onToast: (m: string) => void }) {
+function AccountsSheet({ accounts, builtIn, color, setSnap, onClose, onToast }: { accounts: MailAccount[]; builtIn: boolean; color: (e: string) => string; setSnap: (s: MailSnapshot) => void; onClose: () => void; onToast: (m: string) => void }) {
   const [blocked, setBlocked] = useState<MailBlocked[] | null>(null);
   const [adding, setAdding] = useState(false);
   const [confirmOut, setConfirmOut] = useState<string | null>(null);
@@ -822,8 +822,8 @@ function AccountsSheet({ accounts, color, setSnap, onClose, onToast }: { account
 
       <div className="ml-sheet-actions">
         {confirmReset
-          ? <button className="btn small danger" onClick={async () => { setSnap(await mail({ op: 'clearClient' })); onClose(); }}>Sign out of all and reset</button>
-          : <button className="linkbtn muted" title="Sign out of every account and enter a different OAuth client" onClick={() => setConfirmReset(true)}>Reset Mail</button>}
+          ? <button className="btn small danger" onClick={async () => { setSnap(await mail({ op: 'clearClient' })); onClose(); }}>{builtIn ? 'Sign out of every account' : 'Sign out of all and reset'}</button>
+          : <button className="linkbtn muted" title={builtIn ? 'Sign out of every account' : 'Sign out of every account and enter a different OAuth client'} onClick={() => setConfirmReset(true)}>{builtIn ? 'Sign out of all' : 'Reset Mail'}</button>}
         <div className="spacer" />
         <button className="btn" onClick={onClose}>Done</button>
       </div>

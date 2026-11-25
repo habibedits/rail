@@ -151,14 +151,17 @@ Rail isn't code-signed. If macOS blocks it the first time, right-click Rail in A
 
 ### Mail (Gmail)
 
-Google only lets apps read Gmail through an OAuth client, and Rail has no server of its own, so you make one in your own Google Cloud project. It's free and takes a few minutes, once:
+Google only lets an app read Gmail once the app is registered with Google. Rail has no server, so you register your own copy, once. It's free, any normal Gmail account can do it, and it's never per email: afterwards every account is just **Sign in with Google**.
 
-1. In [Google Cloud](https://console.cloud.google.com/projectcreate), create a project (any name, e.g. "Rail").
-2. Turn on the [Gmail API](https://console.cloud.google.com/apis/library/gmail.googleapis.com) for it.
-3. Open **Google Auth Platform → Branding** (the OAuth consent screen), pick **External**, and fill in the app name and your email. Under **Audience**, add every address you'll sign in with as a test user, then click **Publish app**. Published, your sign-ins don't expire every 7 days. Google shows an "unverified app" warning when you sign in; that's expected for an app only you use. Click **Advanced → Go to Rail**.
-4. Under **Clients** (or **Credentials**), create an **OAuth client ID** of type **Desktop app**.
-5. In Rail's Mail space, paste the client ID and secret (or the whole JSON file Google offers to download), then **Sign in with Google**. Your browser opens; pick an account and allow both Gmail permissions.
-6. Add more accounts from the person button → **+ Add a Gmail account**.
+1. Open [Google Cloud](https://console.cloud.google.com/projectcreate) with any Google account and create a project called **Rail**.
+2. Open the [Gmail API](https://console.cloud.google.com/apis/library/gmail.googleapis.com) page for that project and click **Enable**.
+3. Open [Google Auth Platform](https://console.cloud.google.com/auth/overview) and click **Get started**. App name **Rail**, your email as support email, **External** audience, your email as contact, agree, **Create**.
+4. Go to **Clients → Create client**. Application type **Desktop app**, name **Rail**, **Create**, then **Download JSON**.
+5. Go to **Audience → Publish app → Confirm**. (Unpublished apps sign you out every 7 days.)
+6. Move the downloaded `client_secret_….json` into your `rail` folder, unrenamed, and run `npm run install-app`. The build prints **✓ Mail: built in the Google sign-in**.
+7. Open the Mail space and click **Sign in with Google**. Google says the app isn't verified: click **Advanced → Go to Rail (unsafe)**, tick both Gmail boxes, **Continue**. Add more accounts from the person button → **+ Add a Gmail account**.
+
+The file is gitignored, so it stays on your Mac. To let a friend use your registration, send them the file privately (up to 100 people can sign in to an unverified app). Without the file, the Mail space asks for the client ID and secret instead.
 
 Rail asks for two permissions: **read, send and organize mail** (`gmail.modify`: no permanent deletes, Delete goes to Trash) and **manage filters** (`gmail.settings.basic`: only for Block). The client and each account's sign-in are stored encrypted in your Keychain. Mail goes only between your Mac and Google.
 

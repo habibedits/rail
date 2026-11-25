@@ -13,7 +13,9 @@
 // keyed by Gmail's historyId, so only changed conversations are fetched again.
 
 import crypto from 'node:crypto';
+import fs from 'node:fs';
 import http from 'node:http';
+import path from 'node:path';
 import { shell } from 'electron';
 import { getSecret, setSecret } from './secrets';
 
@@ -54,6 +56,7 @@ export interface MailAccount { email: string; on: boolean; unread: number; error
 
 export interface MailSnapshot {
   hasClient: boolean;
+  builtIn: boolean; // the Google client is built into this copy of Rail
   accounts: MailAccount[];
   threads: MailThread[];
   loading: boolean;
@@ -94,10 +97,26 @@ export type Undo =
 interface Client { id: string; secret: string }
 interface Account { email: string; refresh: string; access?: string; exp?: number }
 
+// The client built into this copy of Rail (scripts/build-main.mjs), else one pasted in the Mail space.
+let bundled: Client | null | undefined;
+function builtInClient(): Client | null {
+  if (bundled === undefined) {
+    try {
+      const j = JSON.parse(fs.readFileSync(path.join(__dirname, 'google-client.json'), 'utf8'));
+      bundled = j.id && j.secret ? { id: String(j.id), secret: String(j.secret) } : null;
+    } catch {
+      bundled = null;
+    }
+  }
+  return bundled;
+}
 const loadClient = (): Client | null => {
+  const built = builtInClient();
+  if (built) return built;
   const raw = getSecret('gmail-client');
   return raw ? (JSON.parse(raw) as Client) : null;
 };
+export const hasBuiltInClient = () => !!builtInClient();
 const loadAccounts = (): Account[] => {
   const raw = getSecret('gmail-accounts');
   return raw ? (JSON.parse(raw) as Account[]) : [];
@@ -425,7 +444,7 @@ export function snapshot(): MailSnapshot {
     .map((k) => cache.get(k)?.thread)
     .filter((t): t is MailThread => !!t && on.has(t.account))
     .sort((a, b) => b.date - a.date);
-  return { hasClient: !!loadClient(), accounts, threads, loading, updatedAt, error: lastError };
+  return { hasClient: !!loadClient(), builtIn: hasBuiltInClient(), accounts, threads, loading, updatedAt, error: lastError };
 }
 
 /** Unread inbox conversations across the accounts shown in the feed (the Mail tab's count). */

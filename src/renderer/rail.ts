@@ -301,6 +301,7 @@ export interface MailAccount { email: string; on: boolean; unread: number; error
 
 export interface MailSnapshot {
   hasClient: boolean;
+  builtIn: boolean;
   accounts: MailAccount[];
   threads: MailThread[];
   loading: boolean;
